@@ -61,7 +61,11 @@ class RAGChain:
         self.vectordb = vectordb
         self.llm = llm
         self.retriever = vectordb.as_retriever(
-            search_kwargs={"k": config.RETRIEVER_K}
+            search_type="mmr",
+            search_kwargs={
+                "k": config.RETRIEVER_K,
+                "fetch_k": config.RETRIEVER_FETCH_K
+            }
         )
         logger.info(f"RAGChain initialized with retriever k={config.RETRIEVER_K}")
 
@@ -81,7 +85,6 @@ class RAGChain:
         # STEP 1: MANDATORY RETRIEVAL (this is what makes it RAG, not LLM)
         logger.debug("STEP 1: Retrieving documents from vector store...")
         docs = self.retriever.invoke(query)
-        docs = sorted(docs, key=lambda x: len(x.page_content), reverse=True)
         logger.info(f"Retrieved {len(docs)} documents from vector store")
         
         if not docs:
@@ -96,6 +99,8 @@ class RAGChain:
         # STEP 2: CONTEXT BUILDING from retrieved documents
         logger.debug("STEP 2: Building context from retrieved documents...")
         context_parts = []
+        docs = docs[:config.RERANK_TOP_K]  
+        # final strict selection
         for i, doc in enumerate(docs, 1):
             source_info = doc.metadata.get('source', f'Document {i}')
             context_parts.append(f"[Document {i}: {source_info}]\n{doc.page_content}")

@@ -70,6 +70,11 @@ def load_documents(file_path: str):
 
         chunks = splitter.split_documents(docs)
 
+        # Attach basic metadata (page-based fallback)
+        for i, chunk in enumerate(chunks):
+            chunk.metadata["chunk_id"] = i
+            chunk.metadata["source"] = f"page_{chunk.metadata.get('page', i)}"
+
         if not chunks:
             logger.error("No chunks created from documents")
             raise ValidationError("Failed to create document chunks")

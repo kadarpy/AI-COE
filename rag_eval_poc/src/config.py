@@ -49,6 +49,13 @@ class Config:
     MIN_ANSWER_LENGTH = int(os.getenv("MIN_ANSWER_LENGTH"))
     MAX_ANSWER_LENGTH = int(os.getenv("MAX_ANSWER_LENGTH"))
 
+    # Retrieval tuning
+    RETRIEVER_FETCH_K = int(os.getenv("RETRIEVER_FETCH_K"))  # Number of documents to fetch before final selection
+    RERANK_TOP_K = int(os.getenv("RERANK_TOP_K"))  # Number of top documents to use for final context (strict mode)
+
+    # Strict mode
+    STRICT_CONTEXT_MODE = os.getenv("STRICT_CONTEXT_MODE")
+
     # Logging Configuration
     LOG_LEVEL = os.getenv("LOG_LEVEL").upper()
     LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

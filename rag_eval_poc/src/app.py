@@ -1226,7 +1226,7 @@ def main():
 
             question = st.text_input(
                 "Ask something about your documents",
-                placeholder="Example: What is Python used for?"
+                placeholder="Example: What is machine learning used for?"
             )
 
             ask_clicked = st.button("Ask")
