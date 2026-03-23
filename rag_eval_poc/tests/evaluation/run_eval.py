@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Dict, List, Any
 from datetime import datetime
 import time
-from groq_model import GroqModel
+from LLM_MODEL import GroqModel
 from dotenv import load_dotenv
 
 # Ensure environment is loaded before importing config
@@ -54,6 +54,27 @@ logging.basicConfig(
 
 DEEPEVAL_AVAILABLE = True
 
+EVAL_PROFILES = {
+    "poc": {
+        "faithfulness": 0.70,
+        "relevancy": 0.75,
+        "recall": 0.70,
+        "hallucination": 0.25
+    },
+    "strong": {
+        "faithfulness": 0.85,
+        "relevancy": 0.85,
+        "recall": 0.80,
+        "hallucination": 0.15
+    },
+    "production": {
+        "faithfulness": 0.90,
+        "relevancy": 0.90,
+        "recall": 0.90,
+        "hallucination": 0.05
+    }
+}
+
 
 class TestCaseLoader:
     """Load and validate test cases from YAML"""
@@ -69,8 +90,8 @@ class RAGEvaluator:
         self.qa_chain = None
         self._setup_rag_bot()
         self.groq_llm = GroqModel(
-            api_key=os.getenv("GROQ_API_KEY") or config.GROQ_API_KEY,
-            model_name=os.getenv("GROQ_MODEL") or config.GROQ_MODEL
+            api_key=os.getenv("API_KEY") or config.API_KEY,
+            model_name=os.getenv("LLM_MODEL") or config.LLM_MODEL
         )
     
     def _setup_rag_bot(self):
@@ -133,7 +154,6 @@ class RAGEvaluator:
             
             # Build vector store
             logger.info("Building vector store...")
-            embeddings = get_embeddings()
             vectordb = build_vector_store(all_chunks)
             logger.info("✓ Vector store built")
             
@@ -145,27 +165,55 @@ class RAGEvaluator:
         except Exception as e:
             logger.error(f"Failed to setup RAG bot: {str(e)}")
             raise
-    
-    def get_rag_answer(self, question: str) -> tuple:
-        """
-        Get answer from RAG bot
+    def safe_measure(self, metric, test_case, metric_name, max_retries=3):
+        """Run metric with retry + backoff"""
+        for attempt in range(max_retries):
+            try:
+                metric.measure(test_case)
+                return metric.score, metric.reason
+
+            except Exception as e:
+                error_str = str(e)
+
+                # Handle rate limit specifically
+                if "429" in error_str or "rate_limit" in error_str:
+                    wait_time = (2 ** attempt) * 5  # exponential backoff
+                    logger.warning(f"{metric_name} rate limited. Retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    raise e
+
+        raise RuntimeError(f"{metric_name} failed after {max_retries} retries")
+    def get_rag_answer(self, question: str, max_retries=3) -> tuple:
+        """Get answer from RAG bot with retry"""
+
+        for attempt in range(max_retries):
+            try:
+                result = self.qa_chain.invoke({"query": question})
+
+                answer = result.get("result", "")
+                source_docs = result.get("source_documents", [])
+                context = [doc.page_content for doc in source_docs]
+
+                return answer, context, source_docs
+
+            except Exception as e:
+                error_str = str(e)
+
+                if "429" in error_str or "rate_limit" in error_str:
+                    wait_time = (2 ** attempt) * 5
+                    logger.warning(f"RAG call rate limited. Retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    raise e
+
+        logger.error("RAG call failed after retries")
+        return "", [], []
         
-        Returns:
-            (answer, context, source_docs)
-        """
-        try:
-            result = self.qa_chain.invoke({"query": question})
-            answer = result.get("result", "")
-            source_docs = result.get("source_documents", [])
-            
-            # Extract context from source documents
-            context = [doc.page_content for doc in source_docs]
-                     
-            return answer, context, source_docs
-            
-        except Exception as e:
-            logger.error(f"Error getting RAG answer: {str(e)}")
-            return "", "", []
+    def get_eval_profile(self):
+        if not hasattr(self, "_cached_profile"):
+            self._cached_profile = getattr(self, "eval_profile", EVAL_PROFILES["poc"])
+        return self._cached_profile
     
     def evaluate_test_case(self, test_case: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -179,11 +227,17 @@ class RAGEvaluator:
         """
         question = test_case.get("question", "")
         expected_answer = test_case.get("expected_answer", "")
-        
         logger.info(f"Evaluating Q#{test_case['id']}: {question[:50]}...")
         
         # Get RAG bot answer
         actual_answer, context, source_docs = self.get_rag_answer(question)
+
+        #CRITICAL VALIDATION
+        if not actual_answer or actual_answer.strip() == "":
+            raise ValueError(f"Empty answer generated for test {test_case['id']}")
+
+        if not source_docs:
+            logger.warning(f"No context retrieved for test {test_case['id']}")
         
         # Prepare retrieval context
         retrieval_context = [doc.page_content for doc in source_docs] if source_docs else ["No context retrieved"]
@@ -199,18 +253,24 @@ class RAGEvaluator:
         
         # Run metrics with error handling
         metrics_results = {}
+
+        t = self.get_eval_profile()
+        logger.debug(f"Evaluation profile: {t}")
         
         # 1. Hallucination Metric (Lower is better, 0 is perfect)
         try:
             hallucination_metric = HallucinationMetric(model=self.groq_llm)
-            #hallucination_metric = HallucinationMetric()
-            hallucination_metric.measure(llm_test_case)
-            time.sleep(1.1)  # Add small delay to avoid rate limiting
+            score, reason = self.safe_measure(
+                hallucination_metric,
+                llm_test_case,
+                "Hallucination"
+            )
+
             metrics_results["Hallucination"] = {
-                "score": hallucination_metric.score,
-                "reason": hallucination_metric.reason,
-                "threshold": 0.0,
-                "passed": hallucination_metric.score == 0.0
+                "score": score,
+                "reason": reason,
+                "threshold": t["hallucination"],
+                "passed": score <= t["hallucination"]
             }
             logger.debug(f"  Hallucination: {hallucination_metric.score:.2f}")
         except Exception as e:
@@ -221,13 +281,17 @@ class RAGEvaluator:
         try:
             faithfulness_metric = FaithfulnessMetric(model=self.groq_llm)
             #faithfulness_metric = FaithfulnessMetric()
-            faithfulness_metric.measure(llm_test_case)
-            time.sleep(1.1) # Add small delay to avoid rate limiting
+            score, reason = self.safe_measure(
+                faithfulness_metric,
+                llm_test_case,
+                "Faithfulness"
+            )
+
             metrics_results["Faithfulness"] = {
-                "score": faithfulness_metric.score,
-                "reason": faithfulness_metric.reason,
-                "threshold": 0.7,
-                "passed": faithfulness_metric.score >= 0.7
+                "score": score,
+                "reason": reason,
+                "threshold": t["faithfulness"],
+                "passed": faithfulness_metric.score >= t["faithfulness"]  
             }
             logger.debug(f"  Faithfulness: {faithfulness_metric.score:.2f}")
         except Exception as e:
@@ -237,15 +301,17 @@ class RAGEvaluator:
         # 3. Answer Relevancy Metric (Higher is better, 0-1 scale)
         try:
             relevancy_metric = AnswerRelevancyMetric(model=self.groq_llm)
-            #relevancy_metric = AnswerRelevancyMetric()
-            relevancy_metric.measure(llm_test_case)
-            time.sleep(1.1) # Add small delay to avoid rate limiting
+            score, reason = self.safe_measure(
+                relevancy_metric,
+                llm_test_case,
+                "AnswerRelevancy"
+            )
 
             metrics_results["AnswerRelevancy"] = {
-                "score": relevancy_metric.score,
-                "reason": relevancy_metric.reason,
-                "threshold": 0.7,
-                "passed": relevancy_metric.score >= 0.7
+                "score": score,
+                "reason": reason,
+                "threshold": t["relevancy"],
+                "passed": relevancy_metric.score >= t["relevancy"]
             }
             logger.debug(f"  Answer Relevancy: {relevancy_metric.score:.2f}")
         except Exception as e:
@@ -255,38 +321,60 @@ class RAGEvaluator:
         # 4. Contextual Recall Metric (Higher is better, 0-1 scale)
         try:
             contextual_recall_metric = ContextualRecallMetric(model=self.groq_llm)
-            #contextual_recall_metric = ContextualRecallMetric()
-            contextual_recall_metric.measure(llm_test_case)
-            time.sleep(1.1) # Add small delay to avoid rate limiting
+            score, reason = self.safe_measure(
+                contextual_recall_metric,
+                llm_test_case,
+                "ContextualRecall"
+            )
 
             metrics_results["ContextualRecall"] = {
-                "score": contextual_recall_metric.score,
-                "reason": contextual_recall_metric.reason,
-                "threshold": 0.6,
-                "passed": contextual_recall_metric.score >= 0.6
+                "score": score,
+                "reason": reason,
+                "threshold": t["recall"],
+                "passed": contextual_recall_metric.score >= t["recall"]
             }
             logger.debug(f"  Contextual Recall: {contextual_recall_metric.score:.2f}")
         except Exception as e:
             logger.warning(f"  Contextual Recall metric failed: {str(e)}")
             metrics_results["ContextualRecall"] = {"score": None, "error": str(e), "passed": False}
-        
-        # Compile results
-        valid_metrics = [
-            m for m in metrics_results.values()
-            if m.get("score") is not None
-        ]
 
-        passed_metrics = [
-            m for m in valid_metrics
-            if m.get("passed")
-        ]
+        for m_name, m_val in metrics_results.items():
+            if m_val.get("score") is None:
+                logger.error(f"{m_name} failed for test {test_case['id']}")
+                metrics_results[m_name]["score"] = 0
+                metrics_results[m_name]["passed"] = False
+        # =========================
+        # STRICT PASS LOGIC
+        # =========================
 
-        overall_passed = len(passed_metrics) >= 2   # majority pass
+        hallucination = metrics_results.get("Hallucination", {}).get("score")
+        faithfulness = metrics_results.get("Faithfulness", {}).get("score")
+        relevancy = metrics_results.get("AnswerRelevancy", {}).get("score")
+        contextual_recall = metrics_results.get("ContextualRecall", {}).get("score")
 
-        logger.info(f"Hallucination Score: {metrics_results['Hallucination']}")
-        logger.info(f"Faithfulness Score: {metrics_results['Faithfulness']}")
-        logger.info(f"Answer Relevancy Score: {metrics_results['AnswerRelevancy']}")
-        logger.info(f"Contextual Recall Score: {metrics_results['ContextualRecall']}")
+        # Fail fast if any metric missing
+        if hallucination is None or faithfulness is None or relevancy is None or contextual_recall is None:
+            raise ValueError(f"Incomplete metric scores for test {test_case['id']}")
+
+        # Strict evaluation logic
+
+        overall_passed = (
+            hallucination <= t["hallucination"] and
+            faithfulness >= t["faithfulness"] and
+            relevancy >= t["relevancy"] and
+            contextual_recall >= t["recall"]
+        ) # strict pass logic (all metrics must satisfy thresholds)
+
+        # =========================
+        # SPECIAL CASE: UNANSWERABLE
+        # =========================
+
+        if expected_answer and expected_answer.strip().lower() in ["", "unknown", "not available"]:
+            # For unanswerable, hallucination must be ZERO
+            if hallucination > 0.0:
+                overall_passed = False
+
+        logger.info(f"Hallucination: {hallucination:.2f}, Faithfulness: {faithfulness:.2f}, Relevancy: {relevancy:.2f}, Recall: {contextual_recall:.2f}")
 
         result = {
             "test_id": test_case["id"],
@@ -296,6 +384,7 @@ class RAGEvaluator:
             "actual_answer": actual_answer,
             "context": context,
             "num_retrieved_docs": len(source_docs),
+            "Bot_temperature": config.TEMPERATURE,
             "metrics": metrics_results,
             "overall_passed": overall_passed,
             "timestamp": datetime.now().isoformat()
@@ -304,45 +393,76 @@ class RAGEvaluator:
         return result
     
     def run_evaluation(self, test_cases_file: str = None) -> List[Dict[str, Any]]:
-        """
-        Run evaluation on all test cases
-        
-        Args:
-            test_cases_file: Path to YAML file with test cases
-            
-        Returns:
-            List of evaluation results
-        """
+
         if test_cases_file is None:
             test_cases_file = str(Path(__file__).parent / "test_cases.yaml")
-        
+
         logger.info(f"Loading test cases from {test_cases_file}...")
-        
-        # Load test cases
+
         with open(test_cases_file, 'r') as f:
             data = yaml.safe_load(f)
-        
+
         test_cases = data.get("test_cases", [])
-        logger.info(f"Loaded {len(test_cases)} test cases")
-        
-        # Run evaluation on each test case
-        for test_case in test_cases:
+        expected_count = len(test_cases)
+
+        logger.info(f"Loaded {expected_count} test cases")
+
+        self.results = []
+        failed_ids = []
+
+        for i, test_case in enumerate(test_cases):
+            test_id = test_case.get("id")
+            # Prevent hitting daily token burst
+            if i < len(test_cases) - 1:
+                # adaptive delay (increase spacing as tests progress)
+                delay = 3 + (i * 1.5)
+                time.sleep(delay)
+
             try:
+                logger.info(f"Running test {test_id}")
+
                 result = self.evaluate_test_case(test_case)
+
+                metrics = result.get("metrics", {})
+
+                # HARD VALIDATION
+                if not metrics or any(m.get("score") is None for m in metrics.values()):
+                    raise ValueError(f"Incomplete metric results for test {test_id}")
+
                 self.results.append(result)
+
             except Exception as e:
-                logger.error(f"Error evaluating test case {test_case['id']}: {str(e)}")
+                logger.error(f"FAILED TEST {test_id}: {e}")
+                failed_ids.append(test_id)
+
                 self.results.append({
-                    "test_id": test_case["id"],
-                    "question": test_case.get("question", ""),
-                    "expected_answer": test_case.get("expected_answer", ""),  # ✅ ADD
-                    "actual_answer": "",
-                    "metrics": {},
+                    "test_id": test_id,
+                    "category": test_case.get("category", "unknown"),
+                    "question": test_case.get("question"),
+                    "expected_answer": test_case.get("expected_answer"),
+                    "actual_answer": None,
                     "error": str(e),
-                    "timestamp": datetime.now().isoformat()
+                    "failure_type": "evaluation_error",
+                    "overall_passed": False
                 })
-        
-        logger.info(f"\n✓ Evaluation complete: {len(self.results)} test cases processed")
+
+
+
+        # =========================
+        #  VALIDATION CHECK
+        # =========================
+        actual_count = len(self.results)
+
+        if actual_count != expected_count:
+            raise RuntimeError(
+                f"Mismatch in test execution! Expected {expected_count}, got {actual_count}"
+            )
+
+        logger.info(f"✓ All {actual_count} tests executed")
+
+        if failed_ids:
+            logger.warning(f"Failed test IDs: {failed_ids}")
+
         return self.results
     
     def save_results(self, output_file: str = None) -> str:
@@ -363,14 +483,31 @@ class RAGEvaluator:
         """Generate summary statistics from evaluation results"""
         if not self.results:
             return {}
-        
+
+        t = self.get_eval_profile()
+
         summary = {
             "total_tests": len(self.results),
             "passed_tests": sum(1 for r in self.results if r.get("overall_passed", False)),
             "failed_tests": sum(1 for r in self.results if not r.get("overall_passed", True)),
-            "metrics": {}
+            "metrics": {},
+            "profile_used": t
         }
         
+        # Calculate per-metric statistics
+        t = self.get_eval_profile()
+
+        def is_pass(metric_name, score):
+            if metric_name == "Hallucination":
+                return score <= t["hallucination"]
+            elif metric_name == "Faithfulness":
+                return score >= t["faithfulness"]
+            elif metric_name == "AnswerRelevancy":
+                return score >= t["relevancy"]
+            elif metric_name == "ContextualRecall":
+                return score >= t["recall"]
+            return False
+
         # Calculate per-metric statistics
         for metric_name in ["Hallucination", "Faithfulness", "AnswerRelevancy", "ContextualRecall"]:
             scores = []
@@ -385,12 +522,9 @@ class RAGEvaluator:
                     "avg_score": sum(scores) / len(scores),
                     "min_score": min(scores),
                     "max_score": max(scores),
-                    "passed": sum(1 for s in scores if (
-                        (metric_name == "Hallucination" and s == 0.0) or
-                        (metric_name != "Hallucination" and s >= 0.7)
-                    ))
+                    "passed": sum(1 for s in scores if is_pass(metric_name, s))
                 }
-        
+
         # Category breakdown
         summary["by_category"] = {}
         for category in set(r.get("category") for r in self.results if "category" in r):
@@ -399,76 +533,118 @@ class RAGEvaluator:
                 "count": len(category_results),
                 "passed": sum(1 for r in category_results if r.get("overall_passed", False))
             }
-        
+
+        summary["failed_test_ids"] = [
+            r["test_id"] for r in self.results if not r.get("overall_passed", False)
+        ]
+
+        summary["failed_test_ids"] = sorted(summary["failed_test_ids"])
+
+        summary["pass_rate"] = round(
+            summary["passed_tests"] / summary["total_tests"] * 100, 2
+        )
+
         return summary
     
     def print_summary(self):
         """Print evaluation summary to console"""
         summary = self.generate_summary()
-        
+
         print("\n" + "="*80)
         print("RAG BOT EVALUATION SUMMARY")
         print("="*80)
-        
-        print(f"\nOverall: {summary['passed_tests']}/{summary['total_tests']} tests passed")
-        
+
+        # Overall
+        pass_rate = summary.get("pass_rate", 0)
+        print(f"\nOverall: {summary['passed_tests']}/{summary['total_tests']} tests passed ({pass_rate:.1f}%)")
+
+        # Profile
+        if "profile_used" in summary:
+            print(f"Evaluation Profile: {summary['profile_used']}")
+
+        # Metrics
         print("\nMetric Performance:")
         for metric, stats in summary.get("metrics", {}).items():
             print(f"  {metric}:")
             print(f"    Avg Score: {stats['avg_score']:.2f}")
             print(f"    Range: {stats['min_score']:.2f} - {stats['max_score']:.2f}")
             print(f"    Passed: {stats['passed']}/{summary['total_tests']}")
-        
+
+        # Category breakdown
         print("\nResults by Category:")
         for category, stats in summary.get("by_category", {}).items():
             print(f"  {category}: {stats['passed']}/{stats['count']} passed")
-        
+
+        # Failed tests
+        failed = summary.get("failed_test_ids", [])
+        if failed:
+            print(f"\nFailed Test IDs: {failed}")
+
         print("="*80 + "\n")
-        
+
         return summary
     
     def export_detailed_report(self, output_file: str = None) -> str:
         """Export detailed report in markdown format"""
+
         if output_file is None:
             output_dir = Path(__file__).parent
             output_dir.mkdir(parents=True, exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_file = str(output_dir / f"evaluation_report_{timestamp}.md")
-        
+
         summary = self.generate_summary()
-        
+
+        pass_rate = summary.get("pass_rate", 0)
+
         with open(output_file, 'w') as f:
             f.write("# RAG Bot Evaluation Report\n\n")
             f.write(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-            
-            # Summary stats
-            f.write(" Summary Statistics\n\n")
+
+            # Summary
+            f.write("## Summary Statistics\n\n")
             f.write(f"- **Total Tests**: {summary['total_tests']}\n")
             f.write(f"- **Passed**: {summary['passed_tests']}\n")
             f.write(f"- **Failed**: {summary['failed_tests']}\n")
-            f.write(f"- **Pass Rate**: {(summary['passed_tests']/summary['total_tests']*100):.1f}%\n\n")
-            
-            # Metric performance
-            f.write(" Metric Performance\n\n")
+            f.write(f"- **Pass Rate**: {pass_rate:.1f}%\n")
+
+            if "profile_used" in summary:
+                f.write(f"- **Profile Used**: {summary['profile_used']}\n")
+
+            f.write("\n")
+
+            # Failed Tests
+            if summary.get("failed_test_ids"):
+                f.write("## Failed Test Cases\n\n")
+                f.write(", ".join(map(str, summary["failed_test_ids"])) + "\n\n")
+
+            # Metrics
+            f.write("## Metric Performance\n\n")
             for metric, stats in summary.get("metrics", {}).items():
-                f.write(f"# {metric}\n")
+                f.write(f"### {metric}\n")
                 f.write(f"- Average Score: {stats['avg_score']:.2f}\n")
                 f.write(f"- Min: {stats['min_score']:.2f}, Max: {stats['max_score']:.2f}\n")
                 f.write(f"- Passed: {stats['passed']}/{summary['total_tests']}\n\n")
-            
-            # Category breakdown
-            f.write(" Results by Category\n\n")
+
+            # Categories
+            f.write("## Results by Category\n\n")
             for category, stats in summary.get("by_category", {}).items():
                 f.write(f"- **{category}**: {stats['passed']}/{stats['count']} passed\n")
-            
-            f.write("\n Detailed Results\n\n")
+
+            # Detailed results
+            f.write("\n## Detailed Results\n\n")
             for result in self.results:
-                f.write(f"# Test #{result['test_id']}\n")
+                f.write(f"### Test #{result.get('test_id')}\n")
                 f.write(f"**Category**: {result.get('category', 'unknown')}\n")
-                f.write(f"**Question**: {result['question']}\n\n")
-                f.write(f"**Expected**: {result['expected_answer']}\n\n")
-                f.write(f"**Actual**: {result['actual_answer']}\n\n")
-                
+
+                if "error" in result:
+                    f.write(f"**Status**: FAILED\n")
+                    f.write(f"**Error**: {result.get('error')}\n\n")
+                else:
+                    f.write(f"**Question**: {result.get('question', 'N/A')}\n\n")
+                    f.write(f"**Expected**: {result.get('expected_answer', 'N/A')}\n\n")
+                    f.write(f"**Actual**: {result.get('actual_answer', 'N/A')}\n\n")
+
                 if "metrics" in result:
                     f.write("**Metrics**:\n")
                     for metric, m_data in result["metrics"].items():
@@ -478,8 +654,9 @@ class RAGEvaluator:
                             f.write(f"- {metric}: {score:.2f} {passed}\n")
                             if m_data.get("reason"):
                                 f.write(f"  - Reason: {m_data['reason']}\n")
+
                 f.write("\n---\n\n")
-        
+
         logger.info(f"✓ Report saved to {output_file}")
         return output_file
 
@@ -487,11 +664,11 @@ class RAGEvaluator:
 def main():
     """Main evaluation runner"""
     # Set up GROQ API key for DeepEval metrics
-    if config.GROQ_API_KEY:
-        os.environ["GROQ_API_KEY"] = config.GROQ_API_KEY
+    if config.API_KEY:
+        os.environ["API_KEY"] = config.API_KEY
     else:
-        logger.error("❌ GROQ_API_KEY not found in environment or config!")
-        logger.error("Please set GROQ_API_KEY in config/.env")
+        logger.error(" API_KEY not found in environment or config!")
+        logger.error("Please set API_KEY in config/.env")
         sys.exit(1)
     
     logger.info("Starting RAG Bot Evaluation with DeepEval")

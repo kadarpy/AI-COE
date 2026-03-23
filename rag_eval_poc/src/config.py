@@ -25,38 +25,37 @@ class Config:
     EVALUATION_DIR = PROJECT_ROOT / "tests" / "evaluation"
 
     # LLM Provider Configuration (supports multiple providers)
-    LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
+    LLM_PROVIDER = os.getenv("LLM_PROVIDER").lower()
     
     # Groq Configuration (FREE - RECOMMENDED)
-    GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-    GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")  # Fast & free model
+    API_KEY = os.getenv("API_KEY", "")
+    LLM_MODEL = os.getenv("LLM_MODEL")
     
     # Temperature for all providers
-    OPENAI_TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", 0.7))
+    TEMPERATURE = float(os.getenv("TEMPERATURE"))
 
     # Document Loading Configuration
-    PDF_CHUNK_SIZE = 800
-    PDF_CHUNK_OVERLAP = 100
+    PDF_CHUNK_SIZE = int(os.getenv("PDF_CHUNK_SIZE"))
+    PDF_CHUNK_OVERLAP = int(os.getenv("PDF_CHUNK_OVERLAP"))
     ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md"}
 
     # Vector Store Configuration
-    VECTOR_STORE_TYPE = "chroma"
-    RETRIEVER_K = 1  # Number of documents to retrieve
+    VECTOR_STORE_TYPE = str(os.getenv("VECTOR_STORE_TYPE").lower())
+    RETRIEVER_K = int(os.getenv("RETRIEVER_K"))
 
     # Validation Configuration
-    MIN_QUESTION_LENGTH = 3
-    MAX_QUESTION_LENGTH = 500
-    MIN_ANSWER_LENGTH = 10
-    MAX_ANSWER_LENGTH = 5000
+    MIN_QUESTION_LENGTH = int(os.getenv("MIN_QUESTION_LENGTH"))
+    MAX_QUESTION_LENGTH = int(os.getenv("MAX_QUESTION_LENGTH"))
+    MIN_ANSWER_LENGTH = int(os.getenv("MIN_ANSWER_LENGTH"))
+    MAX_ANSWER_LENGTH = int(os.getenv("MAX_ANSWER_LENGTH"))
 
     # Logging Configuration
-    LOG_LEVEL = "INFO"
+    LOG_LEVEL = os.getenv("LOG_LEVEL").upper()
     LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
     # Evaluation Configuration
     EVAL_TEST_CASES_PATH = EVALUATION_DIR / "test_cases.yaml"
-    MIN_CONFIDENCE_SCORE = 0.5
-
+    
     @staticmethod
     def validate():
         """Validate configuration"""
@@ -64,8 +63,8 @@ class Config:
         
         # Validate based on selected provider
         if provider == "groq":
-            if not Config.GROQ_API_KEY:
-                raise ValueError("GROQ_API_KEY environment variable is not set. Get a free key at: https://console.groq.com")
+            if not Config.API_KEY:
+                raise ValueError("API_KEY environment variable is not set. Get a free key at: https://console.groq.com")
         else:
             raise ValueError(f"Invalid LLM_PROVIDER: {provider}. Use: openai, groq, or ollama")
 

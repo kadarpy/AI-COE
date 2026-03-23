@@ -29,7 +29,7 @@ def get_embeddings():
         
         logger.info("Using HuggingFace sentence-transformers embeddings (384 dimensions)")
         embeddings = HuggingFaceEmbeddings(
-            model_name="all-MiniLM-L6-v2",  # 384 dimensional embeddings
+            model_name="bge-small",  # 384 dimensional embeddings
             model_kwargs={"device": "cpu"}
         )
         return embeddings

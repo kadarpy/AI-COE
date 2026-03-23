@@ -1,5 +1,4 @@
-
-​# RAG Evaluation POC - Complete Project Documentation
+# RAG Evaluation POC - Complete Project Documentation
 
 ## Table of Contents
 1. [Project Overview](#project-overview)

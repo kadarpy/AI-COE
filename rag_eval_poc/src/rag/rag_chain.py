@@ -24,7 +24,7 @@ def get_llm():
         from langchain_openai import ChatOpenAI
         return ChatOpenAI(
             model=config.OPENAI_MODEL,
-            temperature=config.OPENAI_TEMPERATURE,
+            temperature=config.TEMPERATURE,
             api_key=config.OPENAI_API_KEY,
             max_retries=3
         )
@@ -33,9 +33,9 @@ def get_llm():
         logger.debug("Using Groq LLM")
         from langchain_groq import ChatGroq
         return ChatGroq(
-            model=config.GROQ_MODEL,
-            temperature=config.OPENAI_TEMPERATURE,
-            api_key=config.GROQ_API_KEY,
+            model=config.LLM_MODEL,
+            temperature=config.TEMPERATURE,
+            api_key=config.API_KEY,
             max_retries=3
         )
     
@@ -45,7 +45,7 @@ def get_llm():
         return ChatOllama(
             model=config.OLLAMA_MODEL,
             base_url=config.OLLAMA_BASE_URL,
-            temperature=config.OPENAI_TEMPERATURE,
+            temperature=config.TEMPERATURE,
             top_p=0.9
         )
     
@@ -81,6 +81,7 @@ class RAGChain:
         # STEP 1: MANDATORY RETRIEVAL (this is what makes it RAG, not LLM)
         logger.debug("STEP 1: Retrieving documents from vector store...")
         docs = self.retriever.invoke(query)
+        docs = sorted(docs, key=lambda x: len(x.page_content), reverse=True)
         logger.info(f"Retrieved {len(docs)} documents from vector store")
         
         if not docs:
@@ -107,21 +108,23 @@ class RAGChain:
         prompt_template = ChatPromptTemplate.from_template(
             """You are a helpful assistant. Answer questions based on the provided documents.
 
-RULES:
-1. Use the documents as your PRIMARY source of information
-2. If the answer is clearly in the documents, provide it with confidence
-3. If the answer requires connecting multiple parts, explain your reasoning
-4. Only say "not in documents" if you've genuinely searched the context
-5. If you can infer something reasonable from the documents, do so
-6. Prioritize document information over general knowledge
-7. Cite which document section you're using when relevant
+            RULES:
+            1. Use the documents as your PRIMARY source of information
+            2. If the answer is clearly in the documents, provide it with confidence
+            3. If the answer requires connecting multiple parts, explain your reasoning
+            4. If the answer is partially available, try to infer reasonably.
+                Avoid saying "not in documents" unless absolutely necessary.
+                if you've genuinely searched the context.
+            5. If you can infer something reasonable from the documents, do so
+            6. Prioritize document information over general knowledge
+            7. Cite which document section you're using when relevant
 
-DOCUMENTS PROVIDED:
-{context}
+            DOCUMENTS PROVIDED:
+            {context}
 
-QUESTION: {question}
+            QUESTION: {question}
 
-ANSWER (based on the documents):"""
+            ANSWER (based on the documents):"""
         )
 
         # STEP 4: LLM GENERATION (generation happens AFTER retrieval with context)

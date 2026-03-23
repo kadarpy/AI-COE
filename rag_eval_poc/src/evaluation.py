@@ -8,6 +8,9 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Any, Tuple, Optional
 from datetime import datetime
+from deepeval import test_case
+from streamlit import context, metric
+from streamlit import metric
 import yaml
 import os
 from dotenv import load_dotenv
@@ -47,15 +50,15 @@ def _get_groq_llm():
             load_dotenv(config_path, override=True)
         
         # Try to get API key from environment or config
-        groq_key = os.getenv("GROQ_API_KEY")
-        if not groq_key:
+        llm_key = os.getenv("API_KEY")
+        if not llm_key:
             try:
-                groq_key = config.GROQ_API_KEY
+                llm_key = config.API_KEY
             except:
-                groq_key = None
+                llm_key = None
         
-        if not groq_key:
-            logger.warning("GROQ_API_KEY not found in environment or config")
+        if not llm_key:
+            logger.warning("API_KEY not found in environment or config")
             return None
         
         
@@ -93,9 +96,9 @@ def _get_groq_llm():
                     raise
         
         # Create instance
-        groq_model = GroqModel(api_key=groq_key, model_name=config.GROQ_MODEL)
-        logger.info(f"✓ Configured Groq ({config.GROQ_MODEL}) as metric judge")
-        return groq_model
+        LLM_MODEL = GroqModel(api_key=llm_key, model_name=config.LLM_MODEL)
+        logger.info(f"✓ Configured Groq ({config.LLM_MODEL}) as metric judge")
+        return LLM_MODEL
         
     except Exception as e:
         logger.error(f"Failed to configure Groq for metrics: {str(e)}")
@@ -119,109 +122,6 @@ def _ensure_groq_configured():
 class EvaluationMetrics:
     """Helper class for metric evaluation"""
     
-    METRIC_THRESHOLDS = {
-        "Hallucination": {"value": 0.0, "operator": "=="},  # Should be 0
-        "Faithfulness": {"value": 0.7, "operator": ">="},   # At least 70%
-        "AnswerRelevancy": {"value": 0.7, "operator": ">="},  # At least 70%
-        "ContextualRecall": {"value": 0.6, "operator": ">="}  # At least 60%
-    }
-
-    def evaluate_response_single_pass(question: str, actual_answer: str, expected_answer: str, retrieval_context: List[str]) -> Dict[str, Any]:
-        groq_llm = _ensure_groq_configured()
-        
-        if not groq_llm:
-            return {"error": "Groq not configured", "overall_passed": False}
-
-        context_text = "\n\n".join(retrieval_context)
-
-        prompt = f"""
-                You are an expert evaluator for RAG systems.
-
-                Evaluate the response based on the following:
-
-                QUESTION:
-                {question}
-
-                EXPECTED ANSWER:
-                {expected_answer}
-
-                ACTUAL ANSWER:
-                {actual_answer}
-
-                RETRIEVED CONTEXT:
-                {context_text}
-
-                Return STRICT JSON ONLY (no explanation outside JSON):
-
-                {{
-                "hallucination": <float between 0 and 1>,
-                "faithfulness": <float between 0 and 1>,
-                "answer_relevancy": <float between 0 and 1>,
-                "contextual_recall": <float between 0 and 1>,
-                "reasoning": "short explanation"
-                }}
-
-                Scoring rules:
-                - hallucination = 0 means no hallucination
-                - faithfulness = grounded in context
-                - answer_relevancy = answers the question
-                - contextual_recall = uses retrieved context properly
-                """
-
-        try:
-            raw_output = groq_llm.generate(prompt)
-
-            # Extract JSON safely
-            import json
-            import re
-
-            json_match = re.search(r"\{.*\}", raw_output, re.DOTALL)
-            if not json_match:
-                raise ValueError("No valid JSON found in LLM output")
-
-            parsed = json.loads(json_match.group())
-
-            metrics = {
-                "Hallucination": {
-                    "score": parsed["hallucination"],
-                    "passed": parsed["hallucination"] == 0.0
-                },
-                "Faithfulness": {
-                    "score": parsed["faithfulness"],
-                    "passed": parsed["faithfulness"] >= 0.7
-                },
-                "AnswerRelevancy": {
-                    "score": parsed["answer_relevancy"],
-                    "passed": parsed["answer_relevancy"] >= 0.7
-                },
-                "ContextualRecall": {
-                    "score": parsed["contextual_recall"],
-                    "passed": parsed["contextual_recall"] >= 0.6
-                }
-            }
-
-            overall_passed = all(m["passed"] for m in metrics.values())
-
-            return {
-                "metrics": metrics,
-                "overall_passed": overall_passed,
-                "reason": parsed.get("reasoning", "")
-            }
-
-        except Exception as e:
-            logger.error(f"Single-pass evaluation failed: {str(e)}")
-            
-            return {
-                "metrics": {
-                    "Hallucination": {"error": str(e), "passed": False},
-                    "Faithfulness": {"error": str(e), "passed": False},
-                    "AnswerRelevancy": {"error": str(e), "passed": False},
-                    "ContextualRecall": {"error": str(e), "passed": False}
-                },
-                "overall_passed": False,
-                "error": str(e)
-            }
-    
     @staticmethod
     def _check_llm_configured() -> Tuple[bool, str]:
         """
@@ -233,153 +133,174 @@ class EvaluationMetrics:
         if config_path.exists():
             load_dotenv(config_path, override=True)
         
-        groq_key = os.getenv("GROQ_API_KEY") or config.GROQ_API_KEY
-        if groq_key:
-            return True, f"✓ Using Groq ({config.GROQ_MODEL}) for evaluation metrics"
+        llm_key = os.getenv("API_KEY") or config.API_KEY
+        if llm_key:
+            return True, f"✓ Using Groq ({config.LLM_MODEL}) for evaluation metrics"
         
         return False, (
-            "Groq API Key Not Configured!\n\n"
-            "Evaluation metrics require GROQ_API_KEY.\n\n"
-            "To fix:\n"
-            "1. Set GROQ_API_KEY in config/.env\n"
-            "2. Get a free key from: https://console.groq.com\n\n"
-            "Groq is used for both RAG bot AND evaluation metrics."
+            "LLM API Key Not Configured!\n\n"
+            "Evaluation metrics require API_KEY."
         )
+    
     
     @staticmethod
     def evaluate_response(question: str, actual_answer: str, expected_answer: str, 
-                         retrieval_context: List[str]) -> Dict[str, Any]:
+                        retrieval_context: List[str]) -> Dict[str, Any]:
         """
-        Evaluate a single response against all metrics
-        
-        Args:
-            question: The question asked
-            actual_answer: The bot's answer
-            expected_answer: The expected/reference answer
-            retrieval_context: Retrieved document contexts
-            
-        Returns:
-            Dict with metric scores and pass/fail status
+        DeepEval-based evaluation (UI + run_eval consistent)
         """
-        # Ensure Groq LLM is configured (lazy-load on first use)
+
         groq_llm = _ensure_groq_configured()
-        
+        def safe_measure(metric, test_case, name, retries=3):
+            import time
+            for i in range(retries):
+                try:
+                    metric.measure(test_case)
+                    return
+                except Exception as e:
+                    if "429" in str(e):
+                        time.sleep((2 ** i) * 5)
+                    else:
+                        raise
+            raise RuntimeError(f"{name} failed after retries")
+
         if not groq_llm:
-            error_msg = (
-                "Groq API Key Not Configured!\n\n"
-                "Evaluation metrics require GROQ_API_KEY.\n\n"
-                "To fix:\n"
-                "1. Set GROQ_API_KEY in config/.env\n"
-                "2. Get a free key from: https://console.groq.com\n\n"
-                "Groq is used for both RAG bot AND evaluation metrics."
-            )
             return {
-                "metrics": {
-                    "Hallucination": {"error": error_msg, "passed": False},
-                    "Faithfulness": {"error": error_msg, "passed": False},
-                    "AnswerRelevancy": {"error": error_msg, "passed": False},
-                    "ContextualRecall": {"error": error_msg, "passed": False}
-                },
+                "metrics": {},
                 "overall_passed": False,
-                "error": error_msg
+                "error": "Groq not configured"
             }
-        
-        # Create test case for DeepEval
+
+        # Create DeepEval test case
         llm_test_case = LLMTestCase(
             input=question,
             actual_output=actual_answer,
             expected_output=expected_answer,
-            context=retrieval_context if retrieval_context else ["No context available"],
-            retrieval_context=retrieval_context if retrieval_context else ["No context available"]
+            context=retrieval_context if retrieval_context else ["No context"],
+            retrieval_context=retrieval_context if retrieval_context else ["No context"]
         )
-                
+
+        # Get dynamic thresholds
+        try:
+            import streamlit as st
+            t = st.session_state.get("eval_profile", {
+                "faithfulness": 0.7,
+                "relevancy": 0.7,
+                "recall": 0.6,
+                "hallucination": 0.0
+            })
+        except:
+            t = {
+                "faithfulness": 0.7,
+                "relevancy": 0.7,
+                "recall": 0.6,
+                "hallucination": 0.0
+            }
+
         metrics_results = {}
-        
-        # 1. Hallucination Metric
+
+        # =========================
+        # 1. Hallucination
+        # =========================
         try:
             metric = HallucinationMetric(model=groq_llm)
-            metric.measure(llm_test_case)
+            safe_measure(metric, llm_test_case, "Hallucination")
+
             metrics_results["Hallucination"] = {
                 "score": metric.score,
-                "reason": metric.reason,
-                "threshold": 0.0,
-                "passed": metric.score == 0.0
+                "reason": getattr(metric, "reason", ""),
+                "threshold": t["hallucination"],
+                "passed": metric.score <= t["hallucination"]
             }
-            logger.debug(f"Hallucination: {metric.score:.2f}")
+
         except Exception as e:
-            error_msg = str(e)
-            logger.error(f"Hallucination metric failed: {error_msg}")
             metrics_results["Hallucination"] = {
-                "error": f"Error: {error_msg[:100]}",
+                "score": None,
+                "error": str(e),
                 "passed": False
             }
-        
-        # 2. Faithfulness Metric
+
+        # =========================
+        # 2. Faithfulness
+        # =========================
         try:
             metric = FaithfulnessMetric(model=groq_llm)
-            metric.measure(llm_test_case)
+            safe_measure(metric, llm_test_case, "Faithfulness")
+
             metrics_results["Faithfulness"] = {
                 "score": metric.score,
-                "reason": metric.reason,
-                "threshold": 0.7,
-                "passed": metric.score >= 0.7
+                "reason": getattr(metric, "reason", ""),
+                "threshold": t["faithfulness"],
+                "passed": metric.score >= t["faithfulness"]
             }
-            logger.debug(f"Faithfulness: {metric.score:.2f}")
+
         except Exception as e:
-            error_msg = str(e)
-            logger.error(f"Faithfulness metric failed: {error_msg}")
             metrics_results["Faithfulness"] = {
-                "error": f"Error: {error_msg[:100]}",
+                "score": None,
+                "error": str(e),
                 "passed": False
             }
-        
-        # 3. Answer Relevancy Metric
+
+        # =========================
+        # 3. Answer Relevancy
+        # =========================
         try:
             metric = AnswerRelevancyMetric(model=groq_llm)
-            metric.measure(llm_test_case)
+            safe_measure(metric, llm_test_case, "AnswerRelevancy")
+
             metrics_results["AnswerRelevancy"] = {
                 "score": metric.score,
-                "reason": metric.reason,
-                "threshold": 0.7,
-                "passed": metric.score >= 0.7
+                "reason": getattr(metric, "reason", ""),
+                "threshold": t["relevancy"],
+                "passed": metric.score >= t["relevancy"]
             }
-            logger.debug(f"Answer Relevancy: {metric.score:.2f}")
+
         except Exception as e:
-            error_msg = str(e)
-            logger.error(f"Answer Relevancy metric failed: {error_msg}")
             metrics_results["AnswerRelevancy"] = {
-                "error": f"Error: {error_msg[:100]}",
+                "score": None,
+                "error": str(e),
                 "passed": False
             }
-        
-        # 4. Contextual Recall Metric
+
+        # =========================
+        # 4. Contextual Recall
+        # =========================
         try:
             metric = ContextualRecallMetric(model=groq_llm)
-            metric.measure(llm_test_case)
+            safe_measure(metric, llm_test_case, "ContextualRecall")
+
             metrics_results["ContextualRecall"] = {
                 "score": metric.score,
-                "reason": metric.reason,
-                "threshold": 0.6,
-                "passed": metric.score >= 0.6
+                "reason": getattr(metric, "reason", ""),
+                "threshold": t["recall"],
+                "passed": metric.score >= t["recall"]
             }
-            logger.debug(f"Contextual Recall: {metric.score:.2f}")
+
         except Exception as e:
-            error_msg = str(e)
-            logger.error(f"Contextual Recall metric failed: {error_msg}")
             metrics_results["ContextualRecall"] = {
-                "error": f"Error: {error_msg[:100]}",
+                "score": None,
+                "error": str(e),
                 "passed": False
             }
-        
-        # Overall pass status
-        overall_passed = True
 
-        for m in metrics_results.values():
-            if m.get("score") is None:
-                overall_passed = False
-            elif not m.get("passed", False):
-                overall_passed = False
-        
+        # =========================
+        # STRICT PASS LOGIC
+        # =========================
+        hallucination = metrics_results["Hallucination"].get("score")
+        faithfulness = metrics_results["Faithfulness"].get("score")
+        relevancy = metrics_results["AnswerRelevancy"].get("score")
+        recall = metrics_results["ContextualRecall"].get("score")
+
+        if None in [hallucination, faithfulness, relevancy, recall]:
+            overall_passed = False
+        else:
+            overall_passed = (
+                hallucination <= t["hallucination"] and
+                faithfulness >= t["faithfulness"] and
+                relevancy >= t["relevancy"] and
+                recall >= t["recall"]
+            )
+
         return {
             "metrics": metrics_results,
             "overall_passed": overall_passed
@@ -498,8 +419,11 @@ class UIEvaluator:
             }
         
         # Evaluate metrics
-        eval_result = EvaluationMetrics.evaluate_response_single_pass(
-            question, actual_answer, expected_answer, retrieval_context
+        eval_result = EvaluationMetrics.evaluate_response(
+            question=question,
+            actual_answer=actual_answer,
+            expected_answer=expected_answer,
+            retrieval_context=retrieval_context
         )
         
         # Compile result
@@ -535,9 +459,40 @@ class UIEvaluator:
         results = []
         
         for idx, test_case in enumerate(test_cases):
-            result = self.evaluate_single_test(test_case)
+            try:
+                result = self.evaluate_single_test(test_case)
+
+                # Ensure structure consistency
+                if "metrics" not in result:
+                    result["metrics"] = {}
+                    result["overall_passed"] = False
+                    result["error"] = result.get("error", "Unknown error")
+
+            except Exception as e:
+                error_msg = str(e)
+
+                if "429" in error_msg or "rate limit" in error_msg.lower():
+                    error_msg = "Rate limit reached. Please retry after some time."
+
+                result = {
+                    "test_id": test_case.get("id"),
+                    "category": test_case.get("category", "unknown"),
+                    "question": test_case.get("question"),
+                    "error": error_msg,
+                    "metrics": {},
+                    "overall_passed": False,
+                    "timestamp": datetime.now().isoformat()
+                }
+
+                results.append(result)
+
+                if progress_callback:
+                    progress_callback(idx + 1, len(test_cases))
+
+                continue
+
             results.append(result)
-            
+
             if progress_callback:
                 progress_callback(idx + 1, len(test_cases))
         
@@ -558,10 +513,13 @@ class UIEvaluator:
         if not eval_results:
             return {}
         
+        total_tests = len(results) if results is not None else len(self.results)
+
         summary = {
-            "total_tests": len(eval_results),
+            "total_tests": total_tests,
+            "completed_tests": len(eval_results),
+            "failed_tests": sum(1 for r in eval_results if r.get("error") or not r.get("overall_passed", False)),
             "passed_tests": sum(1 for r in eval_results if r.get("overall_passed", False)),
-            "failed_tests": sum(1 for r in eval_results if not r.get("overall_passed", True)),
             "metrics": {}
         }
         

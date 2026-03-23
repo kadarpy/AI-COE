@@ -2,7 +2,7 @@
 
 A hands-on learning project for evaluating Retrieval-Augmented Generation (RAG) systems using structured LLM evaluation techniques. This POC demonstrates how to systematically measure quality issues like hallucination, unfaithfulness, and answer irrelevance in GenAI applications.
 
-## 🎯 Project Objective
+##  Project Objective
 
 **Key Question:** Does structured LLM evaluation actually catch problems that manual testing doesn't?
 
@@ -17,7 +17,7 @@ This project answers that question by:
 
 ---
 
-## 📋 Table of Contents
+##  Table of Contents
 
 - [Features](#features)
 - [Quick Start](#quick-start)
@@ -36,7 +36,7 @@ This project answers that question by:
 
 ---
 
-## ✨ Features
+##  Features
 
 ### Core Functionality
 - **RAG Pipeline**: Documents → Chunking → Vector Embeddings → ChromaDB → Retrieval + LLM Generation
@@ -52,7 +52,7 @@ This project answers that question by:
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 - Python 3.8+
@@ -81,8 +81,8 @@ Create a `.env` file in the `config/` folder:
 ```env
 # Choose your LLM provider (groq, openai)
 LLM_PROVIDER=groq
-GROQ_API_KEY=your_groq_api_key_here
-GROQ_MODEL=llama-3.3-70b-versatile
+API_KEY=your_API_KEY_here
+LLM_MODEL=llama-3.3-70b-versatile
 
 # OR for OpenAI:
 # OPENAI_API_KEY=your_openai_key_here
@@ -105,7 +105,7 @@ python tests/evaluation/run_eval.py
 
 ---
 
-## 📦 Installation
+##  Installation
 
 ### Full Setup with Virtual Environment
 
@@ -144,8 +144,8 @@ Set these in `config/.env`:
 ```env
 # LLM Provider
 LLM_PROVIDER=groq                           # groq, openai, anthropic
-GROQ_API_KEY=your_key_here                  # For Groq (free)
-GROQ_MODEL=llama-3.3-70b-versatile          # Groq model selection
+API_KEY=your_key_here                  # For Groq (free)
+LLM_MODEL=llama-3.3-70b-versatile          # Groq model selection
 
 # OpenAI (alternative)
 OPENAI_API_KEY=your_key_here                # For OpenAI API
@@ -171,7 +171,7 @@ VECTOR_STORE_TYPE = "chroma"  # Embedding storage backend
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 rag_eval_poc/
@@ -212,7 +212,7 @@ rag_eval_poc/
 │   ├── evaluation/
 │   │   ├── test_cases.yaml            # 20 test questions (YAML format)
 │   │   ├── run_eval.py                # Evaluation runner script
-│   │   └── groq_model.py              # Groq-specific evaluation
+│   │   └── LLM_MODEL.py              # Groq-specific evaluation
 │   │
 │   └── results/
 │       ├── evaluation_report_1.md     # Markdown evaluation reports
@@ -223,7 +223,7 @@ rag_eval_poc/
 
 ---
 
-## 🎮 Usage
+##  Usage
 
 ### Interactive Web UI (Recommended)
 
@@ -264,12 +264,12 @@ curl -X POST http://localhost:8000/ask \
 python tests/evaluation/run_eval.py
 
 # Run with Groq backend
-python tests/evaluation/groq_model.py
+python tests/evaluation/LLM_MODEL.py
 ```
 
 ---
 
-## 🎯 Evaluation Metrics
+##  Evaluation Metrics
 
 This project uses **4 core DeepEval metrics**:
 
@@ -295,7 +295,7 @@ This project uses **4 core DeepEval metrics**:
 
 ---
 
-## 🧪 Test Cases
+##  Test Cases
 
 ### Test Case Format (YAML)
 
@@ -307,13 +307,13 @@ Test cases are defined in [tests/evaluation/test_cases.yaml](tests/evaluation/te
   question: "What is the main purpose of this document?"
   expected_answer: "The document describes..."
   source_context: "Section 1, Paragraph 2"
-
+  
 - id: "Q2"
   category: "tricky"
   question: "What happens when you combine information from page 3 and page 5?"
   expected_answer: "..."
   source_context: "Page 3 + Page 5"
-
+  
 - id: "Q3"
   category: "unanswerable"
   question: "What color is the author's car?"
@@ -329,7 +329,7 @@ Test cases are defined in [tests/evaluation/test_cases.yaml](tests/evaluation/te
 
 ---
 
-## 📊 Results & Analysis
+##  Results & Analysis
 
 ### Result Files
 
@@ -366,7 +366,7 @@ print(f"\nFailed Tests: {len(failed_tests)}/{len(results['tests'])}")
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ### RAG Pipeline Flow
 
@@ -407,7 +407,7 @@ Results & Visualization
 
 ---
 
-## 🤖 Supported LLM Providers
+##  Supported LLM Providers
 
 ### Groq (Recommended - Free)
 
@@ -418,8 +418,8 @@ Results & Visualization
 
 ```env
 LLM_PROVIDER=groq
-GROQ_API_KEY=your_key
-GROQ_MODEL=llama-3.3-70b-versatile
+API_KEY=your_key
+LLM_MODEL=llama-3.3-70b-versatile
 ```
 
 ### OpenAI
@@ -439,18 +439,18 @@ Change `LLM_PROVIDER` in `.env` and restart the application. All components auto
 
 ---
 
-## 🛠️ Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 
 #### Q: "API key not found"
 ```
-ERROR: GROQ_API_KEY not set in environment
+ERROR: API_KEY not set in environment
 ```
 
 **Solution**: Create `config/.env` with your API key:
 ```env
-GROQ_API_KEY=your_actual_key_here
+API_KEY=your_actual_key_here
 ```
 
 #### Q: "ChromaDB connection error"
@@ -487,20 +487,20 @@ pip install -r requirements.txt
 
 ---
 
-## 📚 Learning Resources
+##  Learning Resources
 
 ### Background Reading
 Before diving in, understand these concepts:
 
 1. **RAG (Retrieval-Augmented Generation)**
    - Augmenting LLMs with external documents to reduce hallucination
-
+   
 2. **Vector Embeddings & Semantic Search**
    - How documents are converted to vectors and matched to queries
-
+   
 3. **LLM Hallucination**
    - When models confidently produce false information
-
+   
 4. **DeepEval Metrics**
    - Structured techniques for measuring LLM output quality
 
@@ -514,7 +514,7 @@ See **GenAI Concepts Glossary (AICOE-11)** for beginner-friendly definitions.
 
 ---
 
-## 🔄 Project Workflow
+##  Project Workflow
 
 ### Step-by-Step Guide
 
@@ -549,7 +549,7 @@ See **GenAI Concepts Glossary (AICOE-11)** for beginner-friendly definitions.
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 This is a POC for learning purposes. Contributions welcome!
 
@@ -575,13 +575,13 @@ python -m pytest tests/  # When tests are added
 
 ---
 
-## 📝 License
+##  License
 
 [Specify your license here]
 
 ---
 
-## 📞 Support & Questions
+##  Support & Questions
 
 - **Issues**: Create an issue on GitHub
 - **Questions**: Contact the AICOE team
@@ -589,15 +589,15 @@ python -m pytest tests/  # When tests are added
 
 ---
 
-## 🎓 Key Takeaways
+##  Key Takeaways
 
 By completing this POC, you'll understand:
 
-✅ How RAG systems work and when they hallucinate  
-✅ Why structured evaluation catches problems manual testing misses  
-✅ How to measure LLM output quality with metrics  
-✅ What "good enough" really means for GenAI apps  
-✅ Practical tools (DeepEval, LangChain, ChromaDB) for evaluation  
+ How RAG systems work and when they hallucinate  
+ Why structured evaluation catches problems manual testing misses  
+ How to measure LLM output quality with metrics  
+ What "good enough" really means for GenAI apps  
+ Practical tools (DeepEval, LangChain, ChromaDB) for evaluation  
 
 **The key insight**: Evaluation metrics aren't perfect, but they're far more scalable and consistent than manual spot-checking. The combination of structured evaluation + human analysis is how you build reliable GenAI systems.
 
@@ -606,4 +606,3 @@ By completing this POC, you'll understand:
 **Last Updated**: March 2026  
 **Status**: Active POC  
 **Maintained By**: AICOE Team
- 

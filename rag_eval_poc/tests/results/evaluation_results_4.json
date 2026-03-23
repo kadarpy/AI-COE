@@ -1,0 +1,638 @@
+[
+  {
+    "test_id": 1,
+    "category": "straightforward",
+    "question": "What is Artificial Intelligence?",
+    "expected_answer": "Artificial Intelligence refers to computer systems capable of performing tasks that require human intelligence",
+    "actual_answer": "According to Document 1, Artificial Intelligence (AI) refers to \"the development of computer systems capable of performing tasks that typically require human intelligence. These tasks include learning, reasoning, problem-solving, understanding language, recognizing patterns, and making decisions\" (Section: 1. Introduction to Artificial Intelligence).\n\nSo, the answer is: Artificial Intelligence is the development of computer systems that can perform tasks requiring human intelligence, such as learning, reasoning, and problem-solving.",
+    "context": [
+      "Artificial Intelligence in the Enterprise\n\nPython was released in 2005.\n\nA Comprehensive Knowledge Guide for Intelligent Systems\n\n1. Introduction to Artificial Intelligence\n\nArtificial Intelligence (AI) refers to the development of computer systems capable of performing tasks that typically require human intelligence. These tasks include learning, reasoning, problem-solving, understanding language, recognizing patterns, and making decisions.\n\nIn modern enterprises, AI has evolved from a research concept into a practical tool used to automate processes, enhance decision-making, and unlock insights from large datasets."
+    ],
+    "num_retrieved_docs": 1,
+    "metrics": {
+      "Hallucination": {
+        "score": 0.0,
+        "reason": "The score is 0.00 because the actual output perfectly aligns with the provided context about Artificial Intelligence (AI) without introducing any contradictory or unfounded information.",
+        "threshold": 0.0,
+        "passed": true
+      },
+      "Faithfulness": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because there are no contradictions found, indicating a perfect alignment between the actual output and the retrieval context.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "AnswerRelevancy": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the output perfectly addresses the question about Artificial Intelligence without any irrelevant statements, demonstrating a strong understanding of the topic.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "ContextualRecall": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the expected output perfectly matches the information in the node(s) in retrieval context, specifically node 1, which confirms that Artificial Intelligence refers to computer systems capable of performing tasks that require human intelligence.",
+        "threshold": 0.6,
+        "passed": true
+      }
+    },
+    "overall_passed": true,
+    "timestamp": "2026-03-22T17:09:06.149121"
+  },
+  {
+    "test_id": 2,
+    "category": "straightforward",
+    "question": "Name two key characteristics of AI systems",
+    "expected_answer": "AI systems can process large data and recognize patterns",
+    "actual_answer": "Based on the provided document (Document 1), two key characteristics of AI systems are:\n\n1. Ability to process large volumes of data\n2. Pattern recognition and prediction capabilities\n\n(I'm using the section \"Key characteristics of AI systems include:\" from Document 1)",
+    "context": [
+      "Organizations across industries\u00e2\u20ac\u201dincluding finance, healthcare, logistics, retail, and technology\u00e2\u20ac\u201dare integrating AI into their core operations to improve efficiency and maintain competitive advantages.\n\nKey characteristics of AI systems include:\n\nAbility to process large volumes of data\n\nPattern recognition and prediction capabilities\n\nContinuous learning from new data\n\nAutomation of repetitive tasks\n\nAugmentation of human decision-making\n\nArtificial Intelligence is not a single technology but a broad field encompassing several sub-disciplines.\n\n2. Major Branches of Artificial Intelligence\n\nArtificial Intelligence includes several specialized domains that focus on different aspects of intelligent behavior.\n\nMachine Learning"
+    ],
+    "num_retrieved_docs": 1,
+    "metrics": {
+      "Hallucination": {
+        "score": 0.0,
+        "reason": "The score is 0.00 because the actual output aligns with the provided context, accurately reflecting key characteristics of AI systems without introducing any contradictory or unfounded information.",
+        "threshold": 0.0,
+        "passed": true
+      },
+      "Faithfulness": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because there are no contradictions found, indicating a perfect alignment between the actual output and the retrieval context.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "AnswerRelevancy": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the output perfectly addresses the input, providing a relevant and accurate response to the question about key characteristics of AI systems, with no irrelevant statements made.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "ContextualRecall": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the sentence in the expected output can be perfectly attributed to the 1st node in the retrieval context, which mentions relevant capabilities, making it a great match!",
+        "threshold": 0.6,
+        "passed": true
+      }
+    },
+    "overall_passed": true,
+    "timestamp": "2026-03-22T17:09:14.009691"
+  },
+  {
+    "test_id": 3,
+    "category": "straightforward",
+    "question": "What is Machine Learning?",
+    "expected_answer": "Machine Learning is a subset of AI that enables systems to learn from data without explicit programming",
+    "actual_answer": "According to Document 1, Machine Learning (ML) is a subset of AI that enables systems to learn patterns from data without being explicitly programmed. (Section: Machine Learning) \n\nIt is defined as a method where instead of writing rules manually, machine learning algorithms learn relationships between inputs and outputs using historical datasets.",
+    "context": [
+      "Machine Learning\n\nMachine Learning (ML) is a subset of AI that enables systems to learn patterns from data without being explicitly programmed.\n\nInstead of writing rules manually, machine learning algorithms learn relationships between inputs and outputs using historical datasets.\n\nCommon machine learning methods include:\n\nSupervised learning\n\nUnsupervised learning\n\nReinforcement learning\n\nExamples of machine learning applications include:\n\nFraud detection\n\nRecommendation systems\n\nDemand forecasting\n\nCustomer segmentation\n\nNatural Language Processing\n\nNatural Language Processing (NLP) focuses on enabling machines to understand, interpret, and generate human language.\n\nNLP systems analyze text and speech to extract meaning, sentiment, or intent.\n\nTypical NLP tasks include:"
+    ],
+    "num_retrieved_docs": 1,
+    "metrics": {
+      "Hallucination": {
+        "score": 0.0,
+        "reason": "The score is 0.00 because the actual output perfectly aligns with the provided context about Machine Learning (ML) being a subset of AI, without introducing any contradictory or unfounded information.",
+        "threshold": 0.0,
+        "passed": true
+      },
+      "Faithfulness": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because there are no contradictions found, indicating a perfect alignment between the actual output and the retrieval context.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "AnswerRelevancy": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the output perfectly addresses the input question about Machine Learning, providing a clear and relevant explanation without any irrelevant statements.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "ContextualRecall": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the expected output sentence can be perfectly attributed to the 1st node in the retrieval context, which states a nearly identical definition of Machine Learning, demonstrating a flawless recall.",
+        "threshold": 0.6,
+        "passed": true
+      }
+    },
+    "overall_passed": true,
+    "timestamp": "2026-03-22T17:09:34.613554"
+  },
+  {
+    "test_id": 4,
+    "category": "straightforward",
+    "question": "What are the three types of machine learning?",
+    "expected_answer": "Supervised learning, unsupervised learning, and reinforcement learning",
+    "actual_answer": "According to Document 1, the three types of machine learning are:\n\n1. Supervised learning\n2. Unsupervised learning\n3. Reinforcement learning\n\n(I'm using the section \"Machine Learning\" and specifically the subsection \"Common machine learning methods include:\" to answer this question.)",
+    "context": [
+      "Machine Learning\n\nMachine Learning (ML) is a subset of AI that enables systems to learn patterns from data without being explicitly programmed.\n\nInstead of writing rules manually, machine learning algorithms learn relationships between inputs and outputs using historical datasets.\n\nCommon machine learning methods include:\n\nSupervised learning\n\nUnsupervised learning\n\nReinforcement learning\n\nExamples of machine learning applications include:\n\nFraud detection\n\nRecommendation systems\n\nDemand forecasting\n\nCustomer segmentation\n\nNatural Language Processing\n\nNatural Language Processing (NLP) focuses on enabling machines to understand, interpret, and generate human language.\n\nNLP systems analyze text and speech to extract meaning, sentiment, or intent.\n\nTypical NLP tasks include:"
+    ],
+    "num_retrieved_docs": 1,
+    "metrics": {
+      "Hallucination": {
+        "score": 0.0,
+        "reason": "The score is 0.00 because the actual output perfectly aligns with the provided context, stating common machine learning methods without introducing any unfounded or contradictory information.",
+        "threshold": 0.0,
+        "passed": true
+      },
+      "Faithfulness": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because there are no contradictions found, indicating a perfect alignment between the actual output and the retrieval context, which is absolutely fantastic!",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "AnswerRelevancy": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the actual output perfectly addresses the input question about the types of machine learning, providing a clear and relevant response without any irrelevant statements.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "ContextualRecall": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the entire expected output can be perfectly attributed to the 1st node in the retrieval context, which directly mentions the key machine learning methods, resulting in a flawless match.",
+        "threshold": 0.6,
+        "passed": true
+      }
+    },
+    "overall_passed": true,
+    "timestamp": "2026-03-22T17:10:07.371737"
+  },
+  {
+    "test_id": 5,
+    "category": "straightforward",
+    "question": "What does NLP stand for?",
+    "expected_answer": "Natural Language Processing",
+    "actual_answer": "NLP stands for Natural Language Processing. (Document 1, section: Natural Language Processing)",
+    "context": [
+      "Machine Learning\n\nMachine Learning (ML) is a subset of AI that enables systems to learn patterns from data without being explicitly programmed.\n\nInstead of writing rules manually, machine learning algorithms learn relationships between inputs and outputs using historical datasets.\n\nCommon machine learning methods include:\n\nSupervised learning\n\nUnsupervised learning\n\nReinforcement learning\n\nExamples of machine learning applications include:\n\nFraud detection\n\nRecommendation systems\n\nDemand forecasting\n\nCustomer segmentation\n\nNatural Language Processing\n\nNatural Language Processing (NLP) focuses on enabling machines to understand, interpret, and generate human language.\n\nNLP systems analyze text and speech to extract meaning, sentiment, or intent.\n\nTypical NLP tasks include:"
+    ],
+    "num_retrieved_docs": 1,
+    "metrics": {
+      "Hallucination": {
+        "score": 0.0,
+        "reason": "The score is 0.00 because the actual output perfectly aligns with the provided context, stating that NLP stands for Natural Language Processing, without introducing any non-factual information.",
+        "threshold": 0.0,
+        "passed": true
+      },
+      "Faithfulness": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because there are no contradictions found, indicating a perfect alignment between the actual output and the retrieval context, which is absolutely fantastic!",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "AnswerRelevancy": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the output perfectly addresses the input question with no irrelevant statements, demonstrating a strong understanding of the topic and providing a clear, concise answer.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "ContextualRecall": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the sentence 'Natural Language Processing' can be perfectly attributed to the 2nd node in the retrieval context, which directly mentions 'Natural Language Processing (NLP)', making it a flawless match.",
+        "threshold": 0.6,
+        "passed": true
+      }
+    },
+    "overall_passed": true,
+    "timestamp": "2026-03-22T17:10:39.602471"
+  },
+  {
+    "test_id": 6,
+    "category": "straightforward",
+    "question": "What is Computer Vision?",
+    "expected_answer": "Computer Vision allows machines to interpret and understand visual data",
+    "actual_answer": "According to the documents, specifically the section \"Computer Vision\", Computer Vision allows machines to interpret and understand visual data from images and videos. It enables machines to detect objects, recognize faces, and interpret scenes. (Document 1)",
+    "context": [
+      "Typical NLP tasks include:\n\nText classification\n\nSentiment analysis\n\nNamed entity recognition\n\nLanguage translation\n\nQuestion answering\n\nLarge language models (LLMs) such as GPT-style architectures have dramatically improved the capabilities of NLP systems.\n\nComputer Vision\n\nComputer Vision allows machines to interpret and understand visual data from images and videos.\n\nComputer vision systems can detect objects, recognize faces, and interpret scenes.\n\nExamples of computer vision applications include:\n\nAutonomous vehicles\n\nMedical imaging analysis\n\nSecurity surveillance\n\nManufacturing quality control\n\n3. Machine Learning Types\n\nMachine learning algorithms can be categorized based on how they learn from data.\n\nSupervised Learning"
+    ],
+    "num_retrieved_docs": 1,
+    "metrics": {
+      "Hallucination": {
+        "score": 0.0,
+        "reason": "The score is 0.00 because the actual output perfectly aligns with the provided context, accurately reflecting the capabilities of Computer Vision without introducing any unfounded or contradictory information.",
+        "threshold": 0.0,
+        "passed": true
+      },
+      "Faithfulness": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because there are no contradictions found, indicating a perfect alignment between the actual output and the retrieval context.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "AnswerRelevancy": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the output perfectly addresses the input question about Computer Vision, providing a clear and relevant explanation without any irrelevant statements.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "ContextualRecall": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the expected output perfectly matches the information in the 5th node in the retrieval context, which states the same fact about Computer Vision, indicating a flawless recall.",
+        "threshold": 0.6,
+        "passed": true
+      }
+    },
+    "overall_passed": true,
+    "timestamp": "2026-03-22T17:11:11.976497"
+  },
+  {
+    "test_id": 7,
+    "category": "straightforward",
+    "question": "What is supervised learning?",
+    "expected_answer": "Supervised learning trains a model using labeled data",
+    "actual_answer": "According to Document 1, supervised learning \"involves training a model on labeled data. Each input example is paired with a correct output.\" (Section: Supervised Learning) This means that supervised learning is a type of machine learning where the model is trained on data that has already been labeled with the correct output, allowing it to learn and make predictions on new, unseen data.",
+    "context": [
+      "Supervised Learning\n\nSupervised learning involves training a model on labeled data. Each input example is paired with a correct output.\n\nThe model learns to map inputs to outputs so that it can predict outcomes for new unseen data.\n\nExamples include:\n\nEmail spam detection\n\nCredit risk prediction\n\nHouse price estimation\n\nCommon algorithms used in supervised learning include:\n\nLinear regression\n\nLogistic regression\n\nDecision trees\n\nRandom forests\n\nNeural networks\n\nUnsupervised Learning\n\nUnsupervised learning is used when data does not contain labeled outputs.\n\nThe goal is to discover hidden patterns or groupings within the dataset.\n\nCommon tasks include:\n\nClustering\n\nDimensionality reduction\n\nAnomaly detection\n\nAlgorithms often used include:\n\nK-means clustering\n\nHierarchical clustering"
+    ],
+    "num_retrieved_docs": 1,
+    "metrics": {
+      "Hallucination": {
+        "score": 0.0,
+        "reason": "The score is 0.00 because the actual output accurately reflects the provided context about supervised learning, with no introduced or fabricated information.",
+        "threshold": 0.0,
+        "passed": true
+      },
+      "Faithfulness": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because there are no contradictions found, indicating a perfect alignment between the actual output and the retrieval context.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "AnswerRelevancy": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the output perfectly addresses the question about supervised learning without any irrelevant statements, demonstrating a strong understanding of the topic.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "ContextualRecall": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the sentence in the expected output can be directly attributed to the 1st node in the retrieval context, which states a matching concept, resulting in a perfect recall.",
+        "threshold": 0.6,
+        "passed": true
+      }
+    },
+    "overall_passed": true,
+    "timestamp": "2026-03-22T17:11:44.336397"
+  },
+  {
+    "test_id": 8,
+    "category": "straightforward",
+    "question": "What is unsupervised learning used for?",
+    "expected_answer": "It is used to find patterns or groupings in unlabeled data",
+    "actual_answer": "Unsupervised learning is used when data does not contain labeled outputs. The goal is to discover hidden patterns or groupings within the dataset. (Document 1, section: Unsupervised Learning) \n\nCommon tasks in unsupervised learning include clustering, dimensionality reduction, and anomaly detection.",
+    "context": [
+      "Supervised Learning\n\nSupervised learning involves training a model on labeled data. Each input example is paired with a correct output.\n\nThe model learns to map inputs to outputs so that it can predict outcomes for new unseen data.\n\nExamples include:\n\nEmail spam detection\n\nCredit risk prediction\n\nHouse price estimation\n\nCommon algorithms used in supervised learning include:\n\nLinear regression\n\nLogistic regression\n\nDecision trees\n\nRandom forests\n\nNeural networks\n\nUnsupervised Learning\n\nUnsupervised learning is used when data does not contain labeled outputs.\n\nThe goal is to discover hidden patterns or groupings within the dataset.\n\nCommon tasks include:\n\nClustering\n\nDimensionality reduction\n\nAnomaly detection\n\nAlgorithms often used include:\n\nK-means clustering\n\nHierarchical clustering"
+    ],
+    "num_retrieved_docs": 1,
+    "metrics": {
+      "Hallucination": {
+        "score": 0.0,
+        "reason": "The score is 0.00 because the actual output perfectly aligns with the provided context, demonstrating no hallucination.",
+        "threshold": 0.0,
+        "passed": true
+      },
+      "Faithfulness": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because there are no contradictions found, indicating a perfect alignment between the actual output and the retrieval context.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "AnswerRelevancy": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the actual output perfectly addresses the input question about unsupervised learning, providing a clear and relevant response without any irrelevant statements.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "ContextualRecall": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the expected output sentence can be directly attributed to the 2nd node in the retrieval context, which clearly mentions discovering hidden patterns or groupings within the dataset, making it a perfect match.",
+        "threshold": 0.6,
+        "passed": true
+      }
+    },
+    "overall_passed": true,
+    "timestamp": "2026-03-22T17:12:16.704028"
+  },
+  {
+    "test_id": 9,
+    "category": "straightforward",
+    "question": "What is the purpose of vector databases?",
+    "expected_answer": "Vector databases store and search high-dimensional vectors for similarity",
+    "actual_answer": "The purpose of vector databases is to store and search high-dimensional vectors efficiently, with a focus on similarity search rather than exact matches. (Document 1, Section 6: Vector Databases)",
+    "context": [
+      "Step 6: Similarity search\nThe system retrieves the most relevant document chunks.\n\nStep 7: Answer generation\nThe retrieved context is passed to a language model that generates the final answer.\n\n6. Vector Databases\n\nVector databases are specialized systems designed to store and search high-dimensional vectors efficiently.\n\nUnlike traditional databases, vector databases focus on similarity search rather than exact matches.\n\nPopular vector databases include:\n\nChromaDB\n\nPinecone\n\nWeaviate\n\nMilvus\n\nFAISS\n\nVector search typically uses metrics such as:\n\nCosine similarity\n\nEuclidean distance\n\nDot product similarity\n\nThese metrics measure how close two vectors are in semantic space.\n\n7. Applications of RAG Systems"
+    ],
+    "num_retrieved_docs": 1,
+    "metrics": {
+      "Hallucination": {
+        "score": 0.0,
+        "reason": "The score is 0.00 because the actual output accurately aligns with the provided context, correctly stating the focus and design of vector databases without introducing any contradictory or unfounded information.",
+        "threshold": 0.0,
+        "passed": true
+      },
+      "Faithfulness": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because there are no contradictions found, indicating a perfect alignment between the actual output and the retrieval context.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "AnswerRelevancy": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the output perfectly addresses the input question about the purpose of vector databases, with no irrelevant statements, making it a highly relevant and accurate response.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "ContextualRecall": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the sentence in the expected output can be directly attributed to the 1st node in the retrieval context, indicating a perfect match.",
+        "threshold": 0.6,
+        "passed": true
+      }
+    },
+    "overall_passed": true,
+    "timestamp": "2026-03-22T17:12:49.082308"
+  },
+  {
+    "test_id": 10,
+    "category": "straightforward",
+    "question": "What is Retrieval-Augmented Generation (RAG)?",
+    "expected_answer": "RAG combines retrieval of documents with language generation to improve accuracy",
+    "actual_answer": "According to the documents, specifically section 5, Retrieval-Augmented Generation (RAG) is a modern AI architecture that combines information retrieval with language generation. It retrieves relevant documents from a knowledge base and uses them as context when generating answers, improving factual accuracy, transparency, and traceability of answers. (Document 1, section 5)",
+    "context": [
+      "Accurate\n\nComplete\n\nConsistent\n\nTimely\n\nRepresentative of real-world scenarios\n\nPoor data quality can lead to incorrect predictions and biased models.\n\nOrganizations often invest significant resources in:\n\nData collection\n\nData cleaning\n\nData labeling\n\nData governance\n\n5. Retrieval-Augmented Generation (RAG)\n\nRetrieval-Augmented Generation is a modern AI architecture that combines information retrieval with language generation.\n\nInstead of relying solely on a language model's internal knowledge, RAG systems retrieve relevant documents from a knowledge base and use them as context when generating answers.\n\nThis improves:\n\nfactual accuracy\n\ntransparency\n\ntraceability of answers\n\nA typical RAG system consists of the following components:\n\nDocument ingestion pipeline\n\nText chunking process"
+    ],
+    "num_retrieved_docs": 1,
+    "metrics": {
+      "Hallucination": {
+        "score": 0.0,
+        "reason": "The score is 0.00 because the actual output perfectly aligns with the provided context, demonstrating no hallucinations and complete factual accuracy.",
+        "threshold": 0.0,
+        "passed": true
+      },
+      "Faithfulness": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because there are no contradictions found, indicating a perfect alignment between the actual output and the retrieval context.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "AnswerRelevancy": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the output perfectly addresses the input question about Retrieval-Augmented Generation (RAG) without any irrelevant statements, demonstrating a complete understanding of the topic.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "ContextualRecall": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the sentence in the expected output can be directly attributed to node 5 in the retrieval context, which clearly states the combination of information retrieval with language generation, making it a perfect match.",
+        "threshold": 0.6,
+        "passed": true
+      }
+    },
+    "overall_passed": true,
+    "timestamp": "2026-03-22T17:13:21.872114"
+  },
+  {
+    "test_id": 11,
+    "category": "tricky",
+    "question": "Why is data quality important in AI systems?",
+    "expected_answer": "Poor data quality leads to incorrect predictions and biased models",
+    "actual_answer": "According to the documents, specifically section \"9. Best Practices for Building AI Systems\", maintaining high data quality is one of the best practices for building AI systems. This implies that data quality is important because it can impact the performance and accuracy of AI systems. Additionally, section \"Data Bias\" suggests that if training data contains biases, the model may produce unfair or inaccurate outcomes, which further emphasizes the importance of high-quality data. \n\nTherefore, data quality is important in AI systems because it can affect the accuracy and fairness of the outcomes, and it is a crucial aspect of building reliable and trustworthy AI systems.",
+    "context": [
+      "Despite their advantages, AI systems face several challenges.\n\nData Bias\n\nIf training data contains biases, the model may produce unfair or inaccurate outcomes.\n\nHallucination\n\nLanguage models sometimes generate plausible but incorrect information.\n\nExplainability\n\nMany AI models operate as \"black boxes,\" making it difficult to understand how they reach decisions.\n\nData Privacy\n\nOrganizations must ensure sensitive data is protected and handled according to regulations.\n\n9. Best Practices for Building AI Systems\n\nOrganizations deploying AI systems should follow several best practices.\n\nThese include:\n\nMaintaining high data quality\n\nImplementing robust evaluation frameworks\n\nMonitoring model performance continuously\n\nEnsuring ethical AI practices\n\nUsing human oversight where necessary"
+    ],
+    "num_retrieved_docs": 1,
+    "metrics": {
+      "Hallucination": {
+        "score": 0.0,
+        "reason": "The score is 0.00 because the actual output aligns with the provided context, indicating no hallucination.",
+        "threshold": 0.0,
+        "passed": true
+      },
+      "Faithfulness": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because there are no contradictions found, indicating a perfect alignment between the actual output and the retrieval context.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "AnswerRelevancy": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the output perfectly addresses the question about the importance of data quality in AI systems, with no irrelevant statements, making it a highly relevant and effective response.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "ContextualRecall": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the sentence in the expected output can be directly attributed to node 1 in the retrieval context, which discusses 'Data Bias' and its impact on model outcomes, perfectly aligning with the statement 'Poor data quality leads to incorrect predictions and biased models'.",
+        "threshold": 0.6,
+        "passed": true
+      }
+    },
+    "overall_passed": true,
+    "timestamp": "2026-03-22T17:13:54.542802"
+  },
+  {
+    "test_id": 12,
+    "category": "tricky",
+    "question": "How does RAG improve factual accuracy compared to standard LLMs?",
+    "expected_answer": "RAG retrieves external documents and uses them as context instead of relying only on internal knowledge",
+    "actual_answer": "According to the documents, specifically section 7, \"Applications of RAG Systems\", RAG systems are used in applications where \"factual accuracy and document grounding are essential\". This implies that RAG systems improve factual accuracy by grounding their responses in actual documents, such as internal documentation, product documentation, contracts, and medical literature. \n\nIn contrast to standard LLMs, which may rely on general knowledge or patterns learned from large datasets, RAG systems use specific documents to provide more accurate and relevant responses. This suggests that RAG systems can provide more accurate information than standard LLMs, especially in domains where factual accuracy is critical. \n\nTherefore, RAG improves factual accuracy compared to standard LLMs by using document grounding, which allows it to provide more precise and relevant responses based on actual documents. (Document 1, section 7)",
+    "context": [
+      "These metrics measure how close two vectors are in semantic space.\n\n7. Applications of RAG Systems\n\nRAG systems are increasingly used in enterprise applications where factual accuracy and document grounding are essential.\n\nCommon applications include:\n\nEnterprise Knowledge Assistants\n\nEmployees can query internal documentation such as policies, manuals, and technical guides.\n\nCustomer Support Automation\n\nRAG bots can answer customer queries using product documentation and FAQs.\n\nLegal Document Analysis\n\nLaw firms use RAG systems to analyze contracts and legal precedents.\n\nHealthcare Knowledge Systems\n\nDoctors can query medical literature and clinical guidelines.\n\n8. Challenges in AI Systems\n\nDespite their advantages, AI systems face several challenges.\n\nData Bias"
+    ],
+    "num_retrieved_docs": 1,
+    "metrics": {
+      "Hallucination": {
+        "score": 0.0,
+        "reason": "The score is 0.00 because the actual output accurately aligns with the provided context without introducing any unfounded or contradictory information.",
+        "threshold": 0.0,
+        "passed": true
+      },
+      "Faithfulness": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because there are no contradictions found, indicating a perfect alignment between the actual output and the retrieval context.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "AnswerRelevancy": {
+        "score": 0.8571428571428571,
+        "reason": "The score is 0.86 because the output provides some relevant information, but falls short of a perfect score due to the inclusion of a statement that only references a document and section without fully explaining how RAG improves factual accuracy compared to standard LLMs.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "ContextualRecall": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the sentence in the expected output can be perfectly attributed to the 1st node in the retrieval context, indicating a flawless recall.",
+        "threshold": 0.6,
+        "passed": true
+      }
+    },
+    "overall_passed": true,
+    "timestamp": "2026-03-22T17:14:27.892055"
+  },
+  {
+    "test_id": 13,
+    "category": "tricky",
+    "question": "Why are vector databases used instead of traditional databases in AI systems?",
+    "expected_answer": "Because they support similarity search instead of exact matching",
+    "actual_answer": "Vector databases are used instead of traditional databases in AI systems because they focus on similarity search rather than exact matches (Section 6: Vector Databases). This is particularly useful in AI applications where the goal is to find relevant or similar information, rather than exact matches. Traditional databases, on the other hand, are designed for exact matches, which may not be suitable for AI systems that require similarity searches, such as those used in steps like Step 6: Similarity search.",
+    "context": [
+      "Step 6: Similarity search\nThe system retrieves the most relevant document chunks.\n\nStep 7: Answer generation\nThe retrieved context is passed to a language model that generates the final answer.\n\n6. Vector Databases\n\nVector databases are specialized systems designed to store and search high-dimensional vectors efficiently.\n\nUnlike traditional databases, vector databases focus on similarity search rather than exact matches.\n\nPopular vector databases include:\n\nChromaDB\n\nPinecone\n\nWeaviate\n\nMilvus\n\nFAISS\n\nVector search typically uses metrics such as:\n\nCosine similarity\n\nEuclidean distance\n\nDot product similarity\n\nThese metrics measure how close two vectors are in semantic space.\n\n7. Applications of RAG Systems"
+    ],
+    "num_retrieved_docs": 1,
+    "metrics": {
+      "Hallucination": {
+        "score": 0.0,
+        "reason": "The score is 0.00 because the actual output accurately aligns with the provided context, correctly stating the focus of vector databases and their usefulness in AI applications, without introducing any contradictory or unfounded information.",
+        "threshold": 0.0,
+        "passed": true
+      },
+      "Faithfulness": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because there are no contradictions found, indicating a perfect alignment between the actual output and the retrieval context.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "AnswerRelevancy": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the output perfectly addresses the question about vector databases, providing a clear and relevant explanation without any irrelevant statements.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "ContextualRecall": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the expected output directly aligns with information from node 6 in the retrieval context, which highlights the focus on similarity search.",
+        "threshold": 0.6,
+        "passed": true
+      }
+    },
+    "overall_passed": true,
+    "timestamp": "2026-03-22T17:15:01.211514"
+  },
+  {
+    "test_id": 14,
+    "category": "tricky",
+    "question": "What problem does text chunking solve in RAG systems?",
+    "expected_answer": "It breaks large documents into smaller pieces for efficient embedding and retrieval",
+    "actual_answer": "Text chunking solves the problem of handling large documents in RAG systems. According to the document, \"Large documents are split into smaller chunks so that they can be embedded effectively\" (RAG Workflow, Step 2: Text chunking). This implies that text chunking is necessary to make the embedding generation process more manageable and effective for large documents.",
+    "context": [
+      "Document ingestion pipeline\n\nText chunking process\n\nEmbedding generation\n\nVector database storage\n\nRetrieval engine\n\nLanguage model for answer generation\n\nRAG Workflow\n\nThe typical workflow of a RAG system includes several steps.\n\nStep 1: Document ingestion\nDocuments such as PDFs, text files, or databases are collected and prepared.\n\nStep 2: Text chunking\nLarge documents are split into smaller chunks so that they can be embedded effectively.\n\nStep 3: Embedding generation\nEach chunk is converted into a numerical vector representation.\n\nStep 4: Vector storage\nEmbeddings are stored in a vector database.\n\nStep 5: Query processing\nWhen a user asks a question, the system converts the query into an embedding.\n\nStep 6: Similarity search\nThe system retrieves the most relevant document chunks."
+    ],
+    "num_retrieved_docs": 1,
+    "metrics": {
+      "Hallucination": {
+        "score": 0.0,
+        "reason": "The score is 0.00 because the actual output aligns with the provided context, indicating no hallucination.",
+        "threshold": 0.0,
+        "passed": true
+      },
+      "Faithfulness": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because there are no contradictions found, indicating a perfect alignment between the actual output and the retrieval context.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "AnswerRelevancy": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the actual output perfectly addresses the input question about the problem text chunking solves in RAG systems, with no irrelevant statements made.",
+        "threshold": 0.7,
+        "passed": true
+      },
+      "ContextualRecall": {
+        "score": 1.0,
+        "reason": "The score is 1.00 because the sentence in the expected output can be directly attributed to the 2nd node in the retrieval context, which clearly describes a process of breaking down large documents into smaller pieces, perfectly aligning with the expected output.",
+        "threshold": 0.6,
+        "passed": true
+      }
+    },
+    "overall_passed": true,
+    "timestamp": "2026-03-22T17:15:34.071137"
+  },
+  {
+    "test_id": 15,
+    "category": "tricky",
+    "question": "Why is reinforcement learning useful for decision-making systems?",
+    "expected_answer": "Because it learns strategies based on rewards and penalties over time",
+    "actual_answer": "Reinforcement learning is useful for decision-making systems because it \"trains agents to make sequences of decisions by interacting with an environment\" and \"over time, the model learns strategies that maximize long-term rewards\" (Document 1). This allows the system to learn from its actions and adapt to optimize its decisions, making it a valuable tool for applications such as robotics, game playing, autonomous navigation, and resource optimization.",
+    "context": [
+      "Anomaly detection\n\nAlgorithms often used include:\n\nK-means clustering\n\nHierarchical clustering\n\nPrincipal Component Analysis (PCA)\n\nReinforcement Learning\n\nReinforcement learning trains agents to make sequences of decisions by interacting with an environment.\n\nThe system receives rewards or penalties based on actions it takes.\n\nOver time, the model learns strategies that maximize long-term rewards.\n\nApplications include:\n\nRobotics\n\nGame playing\n\nAutonomous navigation\n\nResource optimization\n\n4. Data: The Foundation of AI\n\nData is the most critical component of any AI system.\n\nAI models rely on large datasets to learn patterns and relationships.\n\nHigh-quality data should have the following properties:\n\nAccurate\n\nComplete\n\nConsistent\n\nTimely\n\nRepresentative of real-world scenarios"
+    ],
+    "num_retrieved_docs": 1,
+    "metrics": {
+      "Hallucination": {
+        "score": 0.0,
+        "reason": "The score is 0.00 because the actual output perfectly aligns with the provided context, correctly describing Reinforcement Learning and its applications without introducing any contradictory or unfounded information.",
+        "threshold": 0.0,
+        "passed": true
+      },
+      "Faithfulness": {
+        "score": null,
+        "error": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01kkxtznbafbt9043w377vb2jz` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 99646, Requested 624. Please try again in 3m53.28s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+        "passed": false
+      },
+      "AnswerRelevancy": {
+        "score": null,
+        "error": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01kkxtznbafbt9043w377vb2jz` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 100000, Requested 447. Please try again in 6m26.208s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+        "passed": false
+      },
+      "ContextualRecall": {
+        "score": null,
+        "error": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `llama-3.3-70b-versatile` in organization `org_01kkxtznbafbt9043w377vb2jz` service tier `on_demand` on tokens per day (TPD): Limit 100000, Used 100000, Requested 536. Please try again in 7m43.104s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+        "passed": false
+      }
+    },
+    "overall_passed": false,
+    "timestamp": "2026-03-22T17:16:03.089865"
+  },
+  {
+    "test_id": 16,
+    "question": "What is the accuracy percentage of AI systems in healthcare?",
+    "expected_answer": "This information is not available in the provided document",
+    "actual_answer": "",
+    "metrics": {},
+    "error": "'context' must be None or a list of strings",
+    "timestamp": "2026-03-22T17:16:03.180277"
+  },
+  {
+    "test_id": 17,
+    "question": "Which vector database is the most widely used in production?",
+    "expected_answer": "The document lists databases but does not rank them",
+    "actual_answer": "",
+    "metrics": {},
+    "error": "'context' must be None or a list of strings",
+    "timestamp": "2026-03-22T17:16:03.237966"
+  },
+  {
+    "test_id": 18,
+    "question": "What is the training dataset size required for large language models?",
+    "expected_answer": "The document does not specify dataset sizes",
+    "actual_answer": "",
+    "metrics": {},
+    "error": "'context' must be None or a list of strings",
+    "timestamp": "2026-03-22T17:16:03.291713"
+  },
+  {
+    "test_id": 19,
+    "question": "Which company developed the first AI system?",
+    "expected_answer": "This historical information is not included in the document",
+    "actual_answer": "",
+    "metrics": {},
+    "error": "'context' must be None or a list of strings",
+    "timestamp": "2026-03-22T17:16:03.337125"
+  },
+  {
+    "test_id": 20,
+    "question": "What is the cost of implementing an enterprise AI system?",
+    "expected_answer": "Cost details are not provided in the document",
+    "actual_answer": "",
+    "metrics": {},
+    "error": "'context' must be None or a list of strings",
+    "timestamp": "2026-03-22T17:16:03.377254"
+  },
+  {
+    "test_id": 21,
+    "question": "what year was python released?",
+    "expected_answer": "1991",
+    "actual_answer": "",
+    "metrics": {},
+    "error": "'context' must be None or a list of strings",
+    "timestamp": "2026-03-22T17:16:03.427784"
+  }
+]
