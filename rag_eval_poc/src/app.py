@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import shutil
 import gc
+from typing import Dict, List, Any
 
 from config import config
 from validators import InputValidator, OutputValidator
@@ -469,6 +470,8 @@ def display_metric_card(metric_name: str, score: float, threshold: float, passed
         st.markdown(f"**{'PASS' if passed else 'FAIL'}**")
 
     # Progress bar
+    safe_score = min(max(score if score is not None else 0, 0), 1)
+
     st.markdown(
         f"""
         <div style="
@@ -479,7 +482,7 @@ def display_metric_card(metric_name: str, score: float, threshold: float, passed
             overflow:hidden;
         ">
             <div style="
-                width:{int(score*100)}%;
+                width:{int(safe_score*100)}%;
                 height:100%;
                 background:{color};
                 border-radius:999px;
@@ -490,7 +493,141 @@ def display_metric_card(metric_name: str, score: float, threshold: float, passed
         unsafe_allow_html=True
     )
 
-    st.caption(f"Score: {score:.2f} | Threshold: {threshold:.2f}")
+    def safe_format(score):
+        return f"{score:.2f}" if score is not None else "N/A"
+
+    st.caption(f"Score: {safe_format(score)} | Threshold: {threshold:.2f}")
+
+
+def display_failure_analysis(result: Dict[str, Any]):
+    """Display failure analysis for a single test result"""
+    
+    failure_analysis = result.get("failure_analysis", {})
+    
+    if not failure_analysis:
+        return
+    
+    failure_type = failure_analysis.get("failure_type", "unknown")
+    reason = failure_analysis.get("reason", "")
+    metric_alignment = failure_analysis.get("metric_alignment", "")
+    notes = failure_analysis.get("notes", "")
+    
+    # Color code by failure type
+    if failure_type == "hallucination":
+        color = "🔴 HALLUCINATION"
+    elif failure_type == "retrieval_miss":
+        color = "🟠 RETRIEVAL_MISS"
+    elif failure_type == "partial_answer":
+        color = "🟡 PARTIAL_ANSWER"
+    else:
+        color = "🟢 CORRECT"
+    
+    with st.expander(f"Failure Analysis: {color}"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write(f"**Type:** {failure_type.title()}")
+            st.write(f"**Reason:** {reason}")
+        
+        with col2:
+            st.write(f"**Metric Alignment:** {metric_alignment.title()}")
+            st.write(f"**Impact:** {notes}")
+
+
+def display_insights_dashboard(summary: Dict[str, Any], results: List[Dict[str, Any]]):
+    """Display insights dashboard showing failure distribution and metric comparisons"""
+    
+    st.subheader("📊 Insights Dashboard")
+    
+    # Get failure distribution
+    failure_dist = summary.get("failure_distribution", {})
+    
+    col_left, col_right = st.columns(2)
+    
+    # LEFT: Failure Distribution
+    with col_left:
+        st.markdown("### Failure Distribution")
+        
+        if failure_dist:
+            # Create pie chart
+            fig_dist = go.Figure(data=[go.Pie(
+                labels=list(failure_dist.keys()),
+                values=list(failure_dist.values()),
+                marker=dict(colors=['#ef4444', '#f97316', '#eab308', '#22c55e'])
+            )])
+            
+            fig_dist.update_layout(
+                height=300,
+                margin=dict(l=10, r=10, t=20, b=20)
+            )
+            
+            st.plotly_chart(fig_dist, use_container_width=True)
+            
+            # Statistics
+            st.markdown("**Breakdown:**")
+            for failure_type, count in sorted(failure_dist.items(), key=lambda x: x[1], reverse=True):
+                pct = (count / sum(failure_dist.values()) * 100) if failure_dist else 0
+                st.write(f"- **{failure_type.title()}**: {count} ({pct:.1f}%)")
+        else:
+            st.info("No failures detected - all tests passed!")
+    
+    # RIGHT: Metric Performance Comparison
+    with col_right:
+        st.markdown("### Metric Performance")
+        
+        metrics = summary.get("metrics", {})
+        
+        if metrics:
+            metric_names = []
+            avg_scores = []
+            min_scores = []
+            max_scores = []
+            
+            for metric_name, metric_stats in metrics.items():
+                metric_names.append(metric_name.replace("Metric", ""))
+                avg_scores.append(metric_stats.get("avg_score", 0))
+                min_scores.append(metric_stats.get("min_score", 0))
+                max_scores.append(metric_stats.get("max_score", 0))
+            
+            # Create comparison bar chart
+            fig_metrics = go.Figure(data=[
+                go.Bar(x=metric_names, y=avg_scores, name='Average', marker_color='#3b82f6'),
+                go.Bar(x=metric_names, y=min_scores, name='Min', marker_color='#ef4444', opacity=0.5),
+                go.Bar(x=metric_names, y=max_scores, name='Max', marker_color='#10b981', opacity=0.5)
+            ])
+            
+            fig_metrics.update_layout(
+                height=300,
+                barmode='group',
+                margin=dict(l=10, r=10, t=20, b=20),
+                yaxis=dict(range=[0, 1]),
+                hovermode='x unified'
+            )
+            
+            st.plotly_chart(fig_metrics, use_container_width=True)
+    
+    # Bottom: Key Findings
+    st.markdown("---")
+    st.markdown("### Key Findings")
+    
+    unanswerable_results = [r for r in results if r.get("category") == "unanswerable"]
+    if unanswerable_results:
+        hallucinations = sum(1 for r in unanswerable_results if r.get("failure_analysis", {}).get("failure_type") == "hallucination")
+        halluc_rate = (hallucinations / len(unanswerable_results) * 100)
+        
+        st.metric(
+            f"Hallucination Rate (Unanswerable: {len(unanswerable_results)} cases)",
+            f"{halluc_rate:.1f}%",
+            delta=f"{hallucinations} detected"
+        )
+    
+    pass_rate = summary.get("pass_rate", 0)
+    if pass_rate > 80:
+        st.success(f" System performing well with {pass_rate:.1f}% pass rate")
+    elif pass_rate > 60:
+        st.warning(f"⚠ System at acceptable level with {pass_rate:.1f}% pass rate")
+    else:
+        st.error(f" System needs improvement - {pass_rate:.1f}% pass rate")
 
 
 def display_evaluation_test_cases():
@@ -506,9 +643,9 @@ def display_evaluation_test_cases():
                 test_manager.load_test_cases()
                 st.session_state.evaluation_test_cases = test_manager.test_cases
                 st.session_state.evaluation_loaded = True
-                st.success(f"✓ Loaded {len(test_manager.test_cases)} test cases")
+                st.success(f" Loaded {len(test_manager.test_cases)} test cases")
             except Exception as e:
-                st.error(f"✗ Error loading test cases: {str(e)}")
+                st.error(f" Error loading test cases: {str(e)}")
     
     # Show test case breakdown
     if st.session_state.evaluation_test_cases:
@@ -587,7 +724,7 @@ def display_single_test_evaluation():
         st.subheader("Evaluation Results")
         
         if "error" in result and result["error"]:
-            st.error(f"✗ Error: {result['error']}")
+            st.error(f" Error: {result['error']}")
         else:
             # Show actual answer
             st.write(f"**Actual Answer:** {result['actual_answer']}")
@@ -678,7 +815,7 @@ def display_batch_evaluation():
         st.session_state.evaluation_results = batch_results
         
         progress_bar.progress(1.0)
-        status_text.text("✓ Evaluation complete!")
+        status_text.text(" Evaluation complete!")
         
         # Display summary
         st.write("---")
@@ -792,7 +929,15 @@ def display_evaluation_results():
     st.divider()
 
     # ==============================
-    # 3. DETAILS (COLLAPSIBLE)
+    # 3. INSIGHTS DASHBOARD (NEW)
+    # ==============================
+    
+    display_insights_dashboard(summary, st.session_state.evaluation_results)
+    
+    st.divider()
+
+    # ==============================
+    # 4. DETAILS (COLLAPSIBLE)
     # ==============================
 
     with st.expander("View Detailed Results"):
@@ -841,9 +986,46 @@ def display_evaluation_results():
         if results_data:
             st.dataframe(pd.DataFrame(results_data), width='stretch')
         
+        # Show detailed results with failure analysis
+        st.write("---")
+        st.subheader("Detailed Test Results with Failure Analysis")
+        
         for result in st.session_state.evaluation_results:
             if result.get("error"):
                 st.error(f"Test {result.get('test_id')} failed: {result.get('error')}")
+            else:
+                # Create expandable section for each test
+                test_id = result.get("test_id")
+                category = result.get("category", "unknown")
+                question = result.get("question", "")
+                status = " PASS" if result.get("overall_passed") else " FAIL"
+                
+                with st.expander(f"Test #{test_id} ({category}) - {status}", expanded=False):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.write(f"**Question:** {question}")
+                        st.write(f"**Expected:** {result.get('expected_answer', 'N/A')}")
+                    
+                    with col2:
+                        st.write(f"**Actual:** {result.get('actual_answer', 'N/A')}")
+                    
+                    st.write("---")
+                    
+                    # Show metrics
+                    st.write("**Metrics:**")
+                    metric_cols = st.columns(2)
+                    for idx, (metric_name, metric_data) in enumerate(result.get("metrics", {}).items()):
+                        with metric_cols[idx % 2]:
+                            score = metric_data.get("score")
+                            passed = metric_data.get("passed", False)
+                            if score is not None:
+                                display_metric_card(metric_name, score, metric_data.get("threshold", 0), passed)
+                    
+                    st.write("---")
+                    
+                    # Show failure analysis
+                    display_failure_analysis(result)
 
 def display_clean_dashboard():
     st.subheader("Evaluation Dashboard")
@@ -1203,7 +1385,7 @@ def main():
                     # =========================
                     initialize_session()
 
-                    st.success("✓ Vector database reset successfully")
+                    st.success(" Vector database reset successfully")
                     st.rerun()
 
                 except Exception as e:

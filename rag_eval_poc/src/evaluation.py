@@ -123,6 +123,15 @@ def is_no_answer(text: str) -> bool:
 
     return any(k in text for k in keywords)
 
+def is_valid(score):
+    return score is not None
+
+def fmt(score):
+    return f"{score:.2f}" if score is not None else "N/A"
+
+def safe_score(score):
+    return min(max(score if score is not None else 0, 0), 1)
+
 def exact_match(a, b):
     a_norm = normalize_text(a)
     b_norm = normalize_text(b)
@@ -176,6 +185,113 @@ def safe_measure(metric, test_case, retries=3):
             else:
                 time.sleep(1)
     raise RuntimeError("Metric failed after retries")
+
+
+# =========================
+# FAILURE ANALYSIS ENGINE
+# =========================
+def analyze_failure(question: str, expected_answer: str, actual_answer: str, metrics: Dict[str, Any], retrieval_context: List[str]) -> Dict[str, Any]:
+    """
+    Analyze failure pattern for a test case
+    
+    Returns structured failure analysis:
+    - failure_type: Classification of failure or success
+    - reason: Clear explanation of the issue
+    - metric_alignment: Whether metrics correctly identified the issue
+    - notes: Detailed explanation
+    """
+    
+    hallucination_score = metrics.get("Hallucination", {}).get("score")
+    faithfulness_score = metrics.get("Faithfulness", {}).get("score")
+    relevancy_score = metrics.get("AnswerRelevancy", {}).get("score")
+    recall_score = metrics.get("ContextualRecall", {}).get("score")
+    exact_match_score = metrics.get("ExactMatch", {}).get("score")
+    
+    # Normalize text for comparison
+    expected_norm = normalize_text(expected_answer)
+    actual_norm = normalize_text(actual_answer)
+    
+    # Determine failure type
+    failure_type = "correct"
+    reason = ""
+    metric_alignment = "correct"
+    notes = ""
+    
+    # Check for hallucination (score > 0.3 indicates hallucination detected)
+    if hallucination_score is not None and hallucination_score > 0.3:
+        failure_type = "hallucination"
+        reason = f"Model generated content not supported by documents"
+        metric_alignment = "correct"
+        notes = f"Hallucination metric score: {hallucination_score:.2f}. Model fabricated or inferred information beyond source context."
+    
+    # Check for retrieval miss (no context retrieved or low recall)
+    elif not retrieval_context or (recall_score is not None and recall_score < 0.4):
+        failure_type = "retrieval_miss"
+        reason = "Failed to retrieve relevant context from documents"
+        metric_alignment = "correct"
+        notes = f"Only {len(retrieval_context)} documents retrieved. Low contextual recall score: {f'{recall_score:.2f}' if recall_score is not None else 'N/A'}"
+    # Check for unanswerable question handled correctly
+    elif is_no_answer(actual_norm) and is_no_answer(expected_norm):
+        failure_type = "correct"
+        reason = "Correctly identified unanswerable question"
+        metric_alignment = "correct"
+        notes = "Model appropriately refused to answer question not in documents"
+    
+    # Check for unanswerable question incorrectly answered
+    elif is_no_answer(expected_norm) and not is_no_answer(actual_norm):
+        failure_type = "hallucination"
+        reason = "Model answered question marked as unanswerable in documents"
+        metric_alignment = "correct" if (hallucination_score is not None and hallucination_score > 0.3) else "false_negative"
+        notes = f"Expected 'not found' response but got: '{actual_answer[:100]}...'. This is hallucination or going beyond documents."
+    
+    # Check for partial answer (relevancy high but not exact match)
+    elif relevancy_score is not None and relevancy_score > 0.7 and faithfulness_score is not None and faithfulness_score > 0.6 and exact_match_score is not None and exact_match_score < 0.7:
+        failure_type = "partial_answer"
+        reason = f"Answer is relevant and faithful but incomplete or slightly different from expected"
+        metric_alignment = "false_negative"
+        notes = f"Relevancy: {relevancy_score:.2f}, Faithfulness: {faithfulness_score:.2f}, but not exact match. Model provided acceptable answer but not the exact phrasing."
+    
+    # Check for low faithfulness (answer doesn't match documents)
+    elif faithfulness_score is not None and faithfulness_score < 0.5:
+        failure_type = "partial_answer"
+        reason = "Answer doesn't faithfully follow source documents"
+        metric_alignment = "correct"
+        notes = f"Faithfulness score low ({faithfulness_score:.2f}). Answer diverges from or contradicts document content."
+    
+    # Check for low relevancy (answer doesn't address question)
+    elif relevancy_score is not None and relevancy_score < 0.5:
+        failure_type = "partial_answer"
+        reason = "Answer doesn't relevantly address the question asked"
+        metric_alignment = "correct"
+        notes = f"Answer relevancy score low ({relevancy_score:.2f}). Model answered a different question or missed the point."
+    
+    # All metrics passing indicates correct answer
+    else:
+        if (exact_match_score == 1.0 and faithfulness_score is not None and faithfulness_score > 0.8 and relevancy_score is not None and relevancy_score > 0.8):
+            failure_type = "correct"
+            reason = "Answer is correct, faithful, and relevant"
+            metric_alignment = "correct"
+            notes = f"All metrics indicate strong answer quality. Exact match: {exact_match_score}, Faithfulness: {faithfulness_score:.2f}, Relevancy: {relevancy_score:.2f}"
+        elif exact_match_score is not None and exact_match_score > 0.7 and faithfulness_score is not None and faithfulness_score > 0.7:
+            failure_type = "correct"
+            reason = "Answer is substantially correct with acceptable metric scores"
+            metric_alignment = "correct"
+            notes = f"Strong answer quality with appropriate semantic matching. Exact match: {exact_match_score:.2f}, Faithfulness: {faithfulness_score:.2f}"
+        else:
+            failure_type = "correct"
+            reason = "Answer appears acceptable based on available metrics"
+            metric_alignment = "correct"
+            notes = (
+                f"Hallucination: {f'{hallucination_score:.2f}' if hallucination_score is not None else 'N/A'}, "
+                f"Faithfulness: {f'{faithfulness_score:.2f}' if faithfulness_score is not None else 'N/A'}, "
+                f"Relevancy: {f'{relevancy_score:.2f}' if relevancy_score is not None else 'N/A'}"
+            )
+    return {
+        "failure_type": failure_type,
+        "reason": reason,
+        "metric_alignment": metric_alignment,
+        "notes": notes
+    }
 
 
 # =========================
@@ -455,6 +571,15 @@ class UIEvaluator:
             retrieval_context
         )
 
+        # Perform failure analysis
+        failure_analysis = analyze_failure(
+            question,
+            expected_answer,
+            actual_answer,
+            eval_result["metrics"],
+            retrieval_context
+        )
+
         output = {
             "test_id": test_case.get("id"),
             "category": test_case.get("category", "unknown"),
@@ -465,6 +590,7 @@ class UIEvaluator:
             "num_retrieved_docs": len(retrieval_context),
             "metrics": eval_result["metrics"],
             "overall_passed": eval_result["overall_passed"],
+            "failure_analysis": failure_analysis,
             "timestamp": datetime.now().isoformat()
         }
 
@@ -494,10 +620,19 @@ class UIEvaluator:
         total = len(results)
         passed = sum(1 for r in results if r.get("overall_passed"))
 
+        # Count failure types
+        failure_types = {}
+        for r in results:
+            failure_analysis = r.get("failure_analysis", {})
+            failure_type = failure_analysis.get("failure_type", "unknown")
+            failure_types[failure_type] = failure_types.get(failure_type, 0) + 1
+
         summary = {
             "total_tests": total,
             "passed_tests": passed,
             "failed_tests": total - passed,
+            "pass_rate": (passed / total * 100) if total > 0 else 0,
+            "failure_distribution": failure_types,
             "metrics": {}
         }
 
@@ -512,12 +647,14 @@ class UIEvaluator:
             scores = [
                 r["metrics"][name]["score"]
                 for r in results
-                if name in r.get("metrics", {}) and r["metrics"][name]["score"] is not None
+                if name in r.get("metrics", {}) and r["metrics"][name].get("score") is not None
             ]
 
             if scores:
                 summary["metrics"][name] = {
-                    "avg_score": sum(scores) / len(scores)
+                    "avg_score": sum(scores) / len(scores),
+                    "min_score": min(scores),
+                    "max_score": max(scores)
                 }
 
         return summary

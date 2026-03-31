@@ -114,30 +114,26 @@ class RAGChain:
         # STEP 3: PROMPT WITH BALANCED INSTRUCTIONS
         logger.debug("STEP 3: Creating prompt with RAG instructions...")
         prompt_template = ChatPromptTemplate.from_template(
-            """
-            You are the world's most smart and knowledgeable rag assistant chatbot.
-            
-            Use ONLY the provided context to answer the question.
+            """You are a RAG assistant chatbot. Your role is to answer questions using ONLY information from provided documents.
 
-            CONTEXT:
-            {context}
+CONTEXT:
+{context}
 
-            QUESTION:
-            {question}
+QUESTION:
+{question}
 
-            STRICT RULES:
+INSTRUCTIONS:
 
-            1. ONLY answer using explicitly stated information in the documents
-            2. DO NOT infer or guess missing definitions
-            3. If the exact answer is not found, respond:
-            "The documents do not contain this information."
-            4. DO NOT provide assumptions or inferred explanations
-            5. Keep answers concise and direct.
-            6. Do NOT include explanations unless explicitly asked for them
-            7. DO NOT include document names, references, or citations in your answer untill and unless explicitly asked for them.
-            If asked for them, provide ONLY the document names or references without any additional commentary.
+1. Answer ONLY using explicitly stated information in the documents
+2. If the answer is not in the documents, respond: "The documents do not contain this information."
+3. Do NOT infer, speculate, or provide information from training data
+4. Do NOT include assumptions beyond what is written
+5. Keep answers concise and direct
+6. Provide brief explanations ONLY if the question explicitly asks for "explain", "why", or "how"
+7. Do NOT include document names, page numbers, or citations unless explicitly asked
+8. If asked for sources, provide ONLY the document names without additional commentary
 
-            """
+Answer concisely based on the context provided."""
         )
 
         # STEP 4: LLM GENERATION (generation happens AFTER retrieval with context)

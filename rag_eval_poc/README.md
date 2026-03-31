@@ -118,7 +118,7 @@ venv\Scripts\activate
 pip install -r requirements.txt
 
 # Verify installation
-python -c "import deepeval, langchain, chromadb; print('✓ All dependencies installed')"
+python -c "import deepeval, langchain, chromadb; print(' All dependencies installed')"
 ```
 
 ### Key Dependencies

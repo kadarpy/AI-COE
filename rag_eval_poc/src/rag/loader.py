@@ -10,12 +10,6 @@ from validators import InputValidator, DocumentValidator, ValidationError
 
 logger = logging.getLogger(__name__)
 
-
-class DocumentLoader:
-    """Wrapper class for document loading operations"""
-    pass
-
-
 def load_documents(file_path: str):
     """
     Load and process documents from PDF or TXT file

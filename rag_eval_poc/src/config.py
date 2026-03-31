@@ -23,6 +23,7 @@ class Config:
     DOCUMENTS_DIR = DATA_DIR / "documents"
     CHROMA_DB_DIR = BASE_DIR / "chroma_db"
     EVALUATION_DIR = PROJECT_ROOT / "tests" / "evaluation"
+    DEFAULT_DOCUMENT_PATH = DOCUMENTS_DIR / "document.txt"
 
     # LLM Provider Configuration (supports multiple providers)
     LLM_PROVIDER = os.getenv("LLM_PROVIDER").lower()

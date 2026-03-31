@@ -31,7 +31,7 @@ class RAGBotDemo:
             pdf_path: Path to document file (PDF or TXT) - defaults to document.txt
         """
         # Default to document.txt instead of sample_doc.pdf
-        self.pdf_path = pdf_path or "src/data/documents/document.txt"
+        self.pdf_path = pdf_path or str(config.DEFAULT_DOCUMENT_PATH)
         self.qa_chain = None
         self.vectordb = None
 

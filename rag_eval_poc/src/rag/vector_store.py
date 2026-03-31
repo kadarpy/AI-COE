@@ -9,12 +9,6 @@ from config import config
 
 logger = logging.getLogger(__name__)
 
-
-class VectorStore:
-    """Wrapper class for vector store operations"""
-    pass
-
-
 def get_embeddings():
     """
     Get embeddings using HuggingFace sentence-transformers (384 dims)

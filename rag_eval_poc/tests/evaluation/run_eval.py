@@ -141,10 +141,10 @@ class RAGEvaluator:
                     )
                     chunks = splitter.split_documents(docs)
                     all_chunks.extend(chunks)
-                    logger.info(f"  ✓ Loaded {len(chunks)} chunks from {doc_file.name}")
+                    logger.info(f"   Loaded {len(chunks)} chunks from {doc_file.name}")
                     
                 except Exception as e:
-                    logger.error(f"  ✗ Error loading {doc_file}: {str(e)}")
+                    logger.error(f"   Error loading {doc_file}: {str(e)}")
                     continue
             
             if not all_chunks:
@@ -155,12 +155,12 @@ class RAGEvaluator:
             # Build vector store
             logger.info("Building vector store...")
             vectordb = build_vector_store(all_chunks)
-            logger.info("✓ Vector store built")
+            logger.info(" Vector store built")
             
             # Build RAG chain
             logger.info("Building RAG chain...")
             self.qa_chain = build_rag_chain(vectordb)
-            logger.info("✓ RAG chain built successfully")
+            logger.info(" RAG chain built successfully")
             
         except Exception as e:
             logger.error(f"Failed to setup RAG bot: {str(e)}")
@@ -458,7 +458,7 @@ class RAGEvaluator:
                 f"Mismatch in test execution! Expected {expected_count}, got {actual_count}"
             )
 
-        logger.info(f"✓ All {actual_count} tests executed")
+        logger.info(f" All {actual_count} tests executed")
 
         if failed_ids:
             logger.warning(f"Failed test IDs: {failed_ids}")
@@ -476,7 +476,7 @@ class RAGEvaluator:
         with open(output_file, 'w') as f:
             json.dump(self.results, f, indent=2, default=str)
         
-        logger.info(f"✓ Results saved to {output_file}")
+        logger.info(f" Results saved to {output_file}")
         return output_file
     
     def generate_summary(self) -> Dict[str, Any]:
@@ -657,7 +657,7 @@ class RAGEvaluator:
 
                 f.write("\n---\n\n")
 
-        logger.info(f"✓ Report saved to {output_file}")
+        logger.info(f" Report saved to {output_file}")
         return output_file
 
 
@@ -691,7 +691,7 @@ def main():
         # Export detailed report
         report_file = evaluator.export_detailed_report()
         
-        logger.info(f"\n✓ Evaluation complete!")
+        logger.info(f"\n Evaluation complete!")
         logger.info(f"  - JSON Results: {json_file}")
         logger.info(f"  - Markdown Report: {report_file}")
         
