@@ -307,7 +307,7 @@ def display_header():
     st.markdown("""
     <div class="hero">
 
-    <h1>RAG (Retrieval-Augmented Generation) Platform</h1>
+    <h1>RAG Evaluation Platform</h1>
 
     <p>
     Enterprise Document AI powered by Retrieval-Augmented Generation.

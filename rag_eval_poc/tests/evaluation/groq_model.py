@@ -1,5 +1,6 @@
 from deepeval.models.base_model import DeepEvalBaseLLM
 from groq import Groq
+from rag_eval_poc.src import config
 
 
 class GroqModel(DeepEvalBaseLLM):
@@ -17,7 +18,7 @@ class GroqModel(DeepEvalBaseLLM):
         response = self.client.chat.completions.create(
             model=self.model_name,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0
+            temperature= config.EVAL_TEMPERATURE
         )
         return response.choices[0].message.content
 

@@ -1,0 +1,175 @@
+test_cases:
+
+  # ========== EASY QUESTIONS (10) ==========
+
+  - id: 1
+    category: straightforward
+    question: "What is Artificial Intelligence?"
+    expected_answer: "Artificial Intelligence refers to computer systems capable of performing tasks that require human intelligence"
+    source_context: "AI refers to systems capable of learning, reasoning, problem-solving, and decision-making"
+    difficulty: easy
+    notes: "Direct definition"
+
+  - id: 2
+    category: straightforward
+    question: "Name two key characteristics of AI systems"
+    expected_answer: "AI systems can process large data and recognize patterns"
+    source_context: "Ability to process large volumes of data, pattern recognition"
+    difficulty: easy
+    notes: "List-based answer"
+
+  - id: 3
+    category: straightforward
+    question: "What is Machine Learning?"
+    expected_answer: "Machine Learning is a subset of AI that enables systems to learn from data without explicit programming"
+    source_context: "ML enables systems to learn patterns from data"
+    difficulty: easy
+    notes: "Direct definition"
+
+  - id: 4
+    category: straightforward
+    question: "What are the three types of machine learning?"
+    expected_answer: "Supervised learning, unsupervised learning, and reinforcement learning"
+    source_context: "Common methods include supervised, unsupervised, reinforcement learning"
+    difficulty: easy
+    notes: "Enumerated list"
+
+  - id: 5
+    category: straightforward
+    question: "What does NLP stand for?"
+    expected_answer: "Natural Language Processing"
+    source_context: "Natural Language Processing (NLP)"
+    difficulty: easy
+    notes: "Acronym expansion"
+
+  - id: 6
+    category: straightforward
+    question: "What is Computer Vision?"
+    expected_answer: "Computer Vision allows machines to interpret and understand visual data"
+    source_context: "Computer Vision interprets images and videos"
+    difficulty: easy
+    notes: "Definition"
+
+  - id: 7
+    category: straightforward
+    question: "What is supervised learning?"
+    expected_answer: "Supervised learning trains a model using labeled data"
+    source_context: "Each input is paired with a correct output"
+    difficulty: easy
+    notes: "Concept definition"
+
+  - id: 8
+    category: straightforward
+    question: "What is unsupervised learning used for?"
+    expected_answer: "It is used to find patterns or groupings in unlabeled data"
+    source_context: "Used when data does not contain labeled outputs"
+    difficulty: easy
+    notes: "Concept usage"
+
+  - id: 9
+    category: straightforward
+    question: "What is the purpose of vector databases?"
+    expected_answer: "Vector databases store and search high-dimensional vectors for similarity"
+    source_context: "Designed for similarity search"
+    difficulty: easy
+    notes: "Direct concept"
+
+  - id: 10
+    category: straightforward
+    question: "What is Retrieval-Augmented Generation (RAG)?"
+    expected_answer: "RAG combines retrieval of documents with language generation to improve accuracy"
+    source_context: "Combines retrieval with generation"
+    difficulty: easy
+    notes: "Core concept"
+
+  # ========== TRICKY QUESTIONS (5) ==========
+
+  - id: 11
+    category: tricky
+    question: "Why is data quality important in AI systems?"
+    expected_answer: "Poor data quality leads to incorrect predictions and biased models"
+    source_context: "High-quality data must be accurate, complete, and consistent"
+    difficulty: medium
+    notes: "Cause-effect reasoning"
+
+  - id: 12
+    category: tricky
+    question: "How does RAG improve factual accuracy compared to standard LLMs?"
+    expected_answer: "RAG retrieves external documents and uses them as context instead of relying only on internal knowledge"
+    source_context: "RAG retrieves relevant documents before generating answers"
+    difficulty: medium
+    notes: "Comparison reasoning"
+
+  - id: 13
+    category: tricky
+    question: "Why are vector databases used instead of traditional databases in AI systems?"
+    expected_answer: "Because they support similarity search instead of exact matching"
+    source_context: "Vector DBs focus on similarity search"
+    difficulty: medium
+    notes: "Concept comparison"
+
+  - id: 14
+    category: tricky
+    question: "What problem does text chunking solve in RAG systems?"
+    expected_answer: "It breaks large documents into smaller pieces for efficient embedding and retrieval"
+    source_context: "Large documents are split into smaller chunks"
+    difficulty: medium
+    notes: "Pipeline reasoning"
+
+  - id: 15
+    category: tricky
+    question: "Why is reinforcement learning useful for decision-making systems?"
+    expected_answer: "Because it learns strategies based on rewards and penalties over time"
+    source_context: "Agents learn by maximizing long-term rewards"
+    difficulty: medium
+    notes: "Concept application"
+
+  # ========== HARD / UNANSWERABLE QUESTIONS (5) ==========
+
+  - id: 16
+    category: unanswerable
+    question: "What is the accuracy percentage of AI systems in healthcare?"
+    expected_answer: "This information is not available in the provided document"
+    source_context: "not_in_documents"
+    difficulty: hard
+    notes: "Numerical data not provided"
+
+  - id: 17
+    category: unanswerable
+    question: "Which vector database is the most widely used in production?"
+    expected_answer: "The document lists databases but does not rank them"
+    source_context: "not_in_documents"
+    difficulty: hard
+    notes: "Requires external comparison"
+
+  - id: 18
+    category: unanswerable
+    question: "What is the training dataset size required for large language models?"
+    expected_answer: "The document does not specify dataset sizes"
+    source_context: "not_in_documents"
+    difficulty: hard
+    notes: "Missing technical detail"
+
+  - id: 19
+    category: unanswerable
+    question: "Which company developed the first AI system?"
+    expected_answer: "This historical information is not included in the document"
+    source_context: "not_in_documents"
+    difficulty: hard
+    notes: "Out-of-scope knowledge"
+
+  - id: 20
+    category: unanswerable
+    question: "What is the cost of implementing an enterprise AI system?"
+    expected_answer: "Cost details are not provided in the document"
+    source_context: "not_in_documents"
+    difficulty: hard
+    notes: "Business data missing"
+
+  - id: 21
+    category: unanswerable
+    question: "what year was python released?"
+    expected_answer: "1991"
+    source_context: "not_in_documents"
+    difficulty: hard
+    notes: "Speculative question"

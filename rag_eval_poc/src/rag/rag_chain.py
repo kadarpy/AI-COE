@@ -80,6 +80,9 @@ class RAGChain:
             - retrieval_count: Number of documents retrieved
         """
         query = input_dict.get("query", "")
+
+        if query.lower().startswith("what is"):
+            query += " definition meaning explanation"
         logger.info(f"RAGChain.invoke called with query: {query[:100]}")
 
         # STEP 1: MANDATORY RETRIEVAL (this is what makes it RAG, not LLM)
@@ -103,7 +106,7 @@ class RAGChain:
         # final strict selection
         for i, doc in enumerate(docs, 1):
             source_info = doc.metadata.get('source', f'Document {i}')
-            context_parts.append(f"[Document {i}: {source_info}]\n{doc.page_content}")
+            context_parts.append(doc.page_content)
         
         context = "\n\n".join(context_parts)
         logger.debug(f"Context length: {len(context)} characters")
@@ -111,25 +114,30 @@ class RAGChain:
         # STEP 3: PROMPT WITH BALANCED INSTRUCTIONS
         logger.debug("STEP 3: Creating prompt with RAG instructions...")
         prompt_template = ChatPromptTemplate.from_template(
-            """You are a helpful assistant. Answer questions based on the provided documents.
+            """
+            You are the world's most smart and knowledgeable rag assistant chatbot.
+            
+            Use ONLY the provided context to answer the question.
 
-            RULES:
-            1. Use the documents as your PRIMARY source of information
-            2. If the answer is clearly in the documents, provide it with confidence
-            3. If the answer requires connecting multiple parts, explain your reasoning
-            4. If the answer is partially available, try to infer reasonably.
-                Avoid saying "not in documents" unless absolutely necessary.
-                if you've genuinely searched the context.
-            5. If you can infer something reasonable from the documents, do so
-            6. Prioritize document information over general knowledge
-            7. Cite which document section you're using when relevant
-
-            DOCUMENTS PROVIDED:
+            CONTEXT:
             {context}
 
-            QUESTION: {question}
+            QUESTION:
+            {question}
 
-            ANSWER (based on the documents):"""
+            STRICT RULES:
+
+            1. ONLY answer using explicitly stated information in the documents
+            2. DO NOT infer or guess missing definitions
+            3. If the exact answer is not found, respond:
+            "The documents do not contain this information."
+            4. DO NOT provide assumptions or inferred explanations
+            5. Keep answers concise and direct.
+            6. Do NOT include explanations unless explicitly asked for them
+            7. DO NOT include document names, references, or citations in your answer untill and unless explicitly asked for them.
+            If asked for them, provide ONLY the document names or references without any additional commentary.
+
+            """
         )
 
         # STEP 4: LLM GENERATION (generation happens AFTER retrieval with context)
@@ -143,7 +151,9 @@ class RAGChain:
             | self.llm
         )
 
-        response = chain.invoke(query)
+        response = chain.invoke({
+            "question": query
+        })
         answer = response.content if hasattr(response, 'content') else str(response)
         logger.info(f"Generated answer: {answer[:100]}")
 

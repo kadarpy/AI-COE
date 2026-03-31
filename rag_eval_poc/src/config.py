@@ -33,6 +33,7 @@ class Config:
     
     # Temperature for all providers
     TEMPERATURE = float(os.getenv("TEMPERATURE"))
+    EVAL_TEMPERATURE = float(os.getenv("EVAL_TEMPERATURE"))
 
     # Document Loading Configuration
     PDF_CHUNK_SIZE = int(os.getenv("PDF_CHUNK_SIZE"))
