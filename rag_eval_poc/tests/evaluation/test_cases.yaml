@@ -1,175 +1,224 @@
 test_cases:
 
-  # ========== EASY QUESTIONS (10) ==========
+  # ========== EASY / FACTUAL RETRIEVAL (12) ==========
 
   - id: 1
     category: straightforward
-    question: "What is Artificial Intelligence?"
-    expected_answer: "Artificial Intelligence refers to computer systems capable of performing tasks that require human intelligence"
-    source_context: "AI refers to systems capable of learning, reasoning, problem-solving, and decision-making"
+    question: "What percentage of Earth's water is freshwater?"
+    expected_answer: "Approximately 2.5%"
+    source_context: "Freshwater: ~2.5%"
     difficulty: easy
-    notes: "Direct definition"
+    notes: "Core factual retrieval"
 
   - id: 2
     category: straightforward
-    question: "Name two key characteristics of AI systems"
-    expected_answer: "AI systems can process large data and recognize patterns"
-    source_context: "Ability to process large volumes of data, pattern recognition"
+    question: "What percentage of freshwater is stored in glaciers and ice caps?"
+    expected_answer: "Approximately 68.7%"
+    source_context: "Glaciers and ice caps: ~68.7%"
     difficulty: easy
-    notes: "List-based answer"
+    notes: "Numerical recall"
 
   - id: 3
     category: straightforward
-    question: "What is Machine Learning?"
-    expected_answer: "Machine Learning is a subset of AI that enables systems to learn from data without explicit programming"
-    source_context: "ML enables systems to learn patterns from data"
+    question: "How much freshwater is groundwater?"
+    expected_answer: "Approximately 30.1%"
+    source_context: "Groundwater: ~30.1%"
     difficulty: easy
-    notes: "Direct definition"
 
   - id: 4
     category: straightforward
-    question: "What are the three types of machine learning?"
-    expected_answer: "Supervised learning, unsupervised learning, and reinforcement learning"
-    source_context: "Common methods include supervised, unsupervised, reinforcement learning"
+    question: "What percentage of freshwater withdrawals is used by agriculture?"
+    expected_answer: "Approximately 70%"
+    source_context: "Agriculture accounts for ~70%"
     difficulty: easy
-    notes: "Enumerated list"
 
   - id: 5
     category: straightforward
-    question: "What does NLP stand for?"
-    expected_answer: "Natural Language Processing"
-    source_context: "Natural Language Processing (NLP)"
+    question: "What percentage of freshwater is used by industry?"
+    expected_answer: "Approximately 20%"
+    source_context: "Industries consume ~20%"
     difficulty: easy
-    notes: "Acronym expansion"
 
   - id: 6
     category: straightforward
-    question: "What is Computer Vision?"
-    expected_answer: "Computer Vision allows machines to interpret and understand visual data"
-    source_context: "Computer Vision interprets images and videos"
+    question: "Define physical water scarcity"
+    expected_answer: "It occurs when natural water resources are insufficient to meet demand"
+    source_context: "Occurs when natural water resources are insufficient"
     difficulty: easy
-    notes: "Definition"
 
   - id: 7
     category: straightforward
-    question: "What is supervised learning?"
-    expected_answer: "Supervised learning trains a model using labeled data"
-    source_context: "Each input is paired with a correct output"
+    question: "Define economic water scarcity"
+    expected_answer: "It occurs when water exists but infrastructure or governance is inadequate"
+    source_context: "Occurs when water exists but infrastructure is inadequate"
     difficulty: easy
-    notes: "Concept definition"
 
   - id: 8
     category: straightforward
-    question: "What is unsupervised learning used for?"
-    expected_answer: "It is used to find patterns or groupings in unlabeled data"
-    source_context: "Used when data does not contain labeled outputs"
+    question: "What is groundwater depletion?"
+    expected_answer: "Groundwater depletion occurs when extraction exceeds natural recharge rates"
+    source_context: "Extraction exceeds recharge rates"
     difficulty: easy
-    notes: "Concept usage"
 
   - id: 9
     category: straightforward
-    question: "What is the purpose of vector databases?"
-    expected_answer: "Vector databases store and search high-dimensional vectors for similarity"
-    source_context: "Designed for similarity search"
+    question: "Name two major sources of water pollution"
+    expected_answer: "Agricultural runoff and industrial effluents"
+    source_context: "Agricultural runoff, industrial effluents"
     difficulty: easy
-    notes: "Direct concept"
 
   - id: 10
     category: straightforward
-    question: "What is Retrieval-Augmented Generation (RAG)?"
-    expected_answer: "RAG combines retrieval of documents with language generation to improve accuracy"
-    source_context: "Combines retrieval with generation"
+    question: "What is desalination?"
+    expected_answer: "It is the process of converting seawater into freshwater"
+    source_context: "Converts seawater to freshwater"
     difficulty: easy
-    notes: "Core concept"
-
-  # ========== TRICKY QUESTIONS (5) ==========
 
   - id: 11
-    category: tricky
-    question: "Why is data quality important in AI systems?"
-    expected_answer: "Poor data quality leads to incorrect predictions and biased models"
-    source_context: "High-quality data must be accurate, complete, and consistent"
-    difficulty: medium
-    notes: "Cause-effect reasoning"
+    category: straightforward
+    question: "What is non-revenue water?"
+    expected_answer: "Water lost before reaching consumers"
+    source_context: "Water lost before reaching consumers"
+    difficulty: easy
 
   - id: 12
-    category: tricky
-    question: "How does RAG improve factual accuracy compared to standard LLMs?"
-    expected_answer: "RAG retrieves external documents and uses them as context instead of relying only on internal knowledge"
-    source_context: "RAG retrieves relevant documents before generating answers"
-    difficulty: medium
-    notes: "Comparison reasoning"
+    category: straightforward
+    question: "What is the projected increase in water demand by 2050?"
+    expected_answer: "20–30%"
+    source_context: "Water demand expected to increase by 20–30%"
+    difficulty: easy
+
+
+  # ========== MEDIUM / REASONING (8) ==========
 
   - id: 13
-    category: tricky
-    question: "Why are vector databases used instead of traditional databases in AI systems?"
-    expected_answer: "Because they support similarity search instead of exact matching"
-    source_context: "Vector DBs focus on similarity search"
+    category: reasoning
+    question: "Why is agriculture the largest consumer of freshwater?"
+    expected_answer: "Because irrigation requires large volumes of water and inefficient methods cause wastage"
+    source_context: "70% usage and inefficient irrigation"
     difficulty: medium
-    notes: "Concept comparison"
 
   - id: 14
-    category: tricky
-    question: "What problem does text chunking solve in RAG systems?"
-    expected_answer: "It breaks large documents into smaller pieces for efficient embedding and retrieval"
-    source_context: "Large documents are split into smaller chunks"
+    category: reasoning
+    question: "How does climate change affect water availability?"
+    expected_answer: "It alters precipitation patterns, increases droughts and floods, and disrupts water supply"
+    source_context: "Alters precipitation and increases extreme events"
     difficulty: medium
-    notes: "Pipeline reasoning"
 
   - id: 15
-    category: tricky
-    question: "Why is reinforcement learning useful for decision-making systems?"
-    expected_answer: "Because it learns strategies based on rewards and penalties over time"
-    source_context: "Agents learn by maximizing long-term rewards"
+    category: reasoning
+    question: "What are the consequences of groundwater depletion?"
+    expected_answer: "Land subsidence, reduced agricultural productivity, and saline intrusion"
+    source_context: "Land subsidence, saline intrusion"
     difficulty: medium
-    notes: "Concept application"
-
-  # ========== HARD / UNANSWERABLE QUESTIONS (5) ==========
 
   - id: 16
-    category: unanswerable
-    question: "What is the accuracy percentage of AI systems in healthcare?"
-    expected_answer: "This information is not available in the provided document"
-    source_context: "not_in_documents"
-    difficulty: hard
-    notes: "Numerical data not provided"
+    category: reasoning
+    question: "Why is accessible freshwater so limited?"
+    expected_answer: "Because most freshwater is locked in glaciers and groundwater, with very little in rivers and lakes"
+    source_context: "<0.01% accessible"
+    difficulty: medium
 
   - id: 17
-    category: unanswerable
-    question: "Which vector database is the most widely used in production?"
-    expected_answer: "The document lists databases but does not rank them"
-    source_context: "not_in_documents"
-    difficulty: hard
-    notes: "Requires external comparison"
+    category: reasoning
+    question: "How does pollution reduce usable water supply?"
+    expected_answer: "It contaminates water sources, making them unsafe for consumption and use"
+    source_context: "Contamination reduces potable water"
+    difficulty: medium
 
   - id: 18
-    category: unanswerable
-    question: "What is the training dataset size required for large language models?"
-    expected_answer: "The document does not specify dataset sizes"
-    source_context: "not_in_documents"
-    difficulty: hard
-    notes: "Missing technical detail"
+    category: reasoning
+    question: "Why is groundwater heavily used in countries like India?"
+    expected_answer: "Due to high demand, agricultural dependence, and insufficient surface water management"
+    source_context: "India groundwater reliance"
+    difficulty: medium
 
   - id: 19
-    category: unanswerable
-    question: "Which company developed the first AI system?"
-    expected_answer: "This historical information is not included in the document"
-    source_context: "not_in_documents"
-    difficulty: hard
-    notes: "Out-of-scope knowledge"
+    category: reasoning
+    question: "What role does IoT play in water management?"
+    expected_answer: "It enables monitoring, data collection, and predictive analytics for efficient usage"
+    source_context: "Sensors and predictive analytics"
+    difficulty: medium
 
   - id: 20
-    category: unanswerable
-    question: "What is the cost of implementing an enterprise AI system?"
-    expected_answer: "Cost details are not provided in the document"
-    source_context: "not_in_documents"
-    difficulty: hard
-    notes: "Business data missing"
+    category: reasoning
+    question: "Why is desalination not universally adopted?"
+    expected_answer: "Because it has high energy costs"
+    source_context: "High energy cost"
+    difficulty: medium
+
+
+  # ========== HARD / MULTI-HOP (5) ==========
 
   - id: 21
+    category: multi_hop
+    question: "Explain the relationship between climate change and groundwater depletion"
+    expected_answer: "Climate change alters rainfall patterns reducing recharge while increasing demand, leading to over-extraction"
+    source_context: "Climate + depletion sections"
+    difficulty: hard
+
+  - id: 22
+    category: multi_hop
+    question: "Compare physical and economic water scarcity with examples"
+    expected_answer: "Physical scarcity is lack of water (Middle East), economic scarcity is lack of infrastructure (Africa)"
+    source_context: "Scarcity section"
+    difficulty: hard
+
+  - id: 23
+    category: multi_hop
+    question: "How do technological and policy solutions complement each other in water management?"
+    expected_answer: "Technology improves efficiency while policies regulate usage and prevent overuse"
+    source_context: "Tech + governance sections"
+    difficulty: hard
+
+  - id: 24
+    category: multi_hop
+    question: "Why will water scarcity impact economic development?"
+    expected_answer: "Because water is essential for agriculture, industry, and human health"
+    source_context: "Conclusion + drivers"
+    difficulty: hard
+
+  - id: 25
+    category: multi_hop
+    question: "Explain why water scarcity is a multidimensional problem"
+    expected_answer: "It involves environmental, economic, and political factors"
+    source_context: "Conclusion"
+    difficulty: hard
+
+
+  # ========== HALLUCINATION / OUT-OF-SCOPE (5) ==========
+
+  - id: 26
     category: unanswerable
-    question: "what year was python released?"
-    expected_answer: "1991"
+    question: "What is the exact global water shortage percentage in 2024?"
+    expected_answer: "This information is not provided in the document"
     source_context: "not_in_documents"
     difficulty: hard
-    notes: "Speculative question"
+
+  - id: 27
+    category: unanswerable
+    question: "Which country has the highest desalination capacity?"
+    expected_answer: "The document does not specify countries"
+    source_context: "not_in_documents"
+    difficulty: hard
+
+  - id: 28
+    category: unanswerable
+    question: "What is the cost per liter of desalinated water?"
+    expected_answer: "Cost data is not provided in the document"
+    source_context: "not_in_documents"
+    difficulty: hard
+
+  - id: 29
+    category: unanswerable
+    question: "Which company leads IoT water solutions globally?"
+    expected_answer: "The document does not mention specific companies"
+    source_context: "not_in_documents"
+    difficulty: hard
+
+  - id: 30
+    category: unanswerable
+    question: "What year did the global water crisis begin?"
+    expected_answer: "The document does not define a specific starting year"
+    source_context: "not_in_documents"
+    difficulty: hard
