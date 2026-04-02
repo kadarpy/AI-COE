@@ -656,17 +656,15 @@ def display_evaluation_test_cases():
         for tc in st.session_state.evaluation_test_cases:
             cat = tc.get("category", "unknown")
             categories[cat] = categories.get(cat, 0) + 1
-        
-        with col1:
-            st.metric("Total Cases", len(st.session_state.evaluation_test_cases))
-        
-        for idx, (cat, count) in enumerate(categories.items(), 1):
-            if idx == 2:
-                with col2:
-                    st.metric(f"{cat.title()}", count)
-            elif idx == 3:
-                with col3:
-                    st.metric(f"{cat.title()}", count)
+
+        # Sort for consistency
+        sorted_categories = dict(sorted(categories.items()))
+
+        cols = st.columns(len(sorted_categories))
+
+        for i, (cat, count) in enumerate(sorted_categories.items()):
+            with cols[i]:
+                st.metric(cat.replace("_", " ").title(), count)
 
 
 def display_single_test_evaluation():
