@@ -48,3 +48,4 @@ logs/
 chroma_db/
 *.pdf
 *.deepeval
+results/*
