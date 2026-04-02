@@ -47,3 +47,4 @@ venv.bak/
 logs/
 chroma_db/
 *.pdf
+*.deepeval
