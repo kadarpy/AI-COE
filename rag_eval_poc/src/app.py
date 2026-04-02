@@ -1396,7 +1396,7 @@ def main():
             st.subheader("System Info")
 
             st.write("Model: Groq LLM")
-            st.write("Vector DB: Chroma")
+            st.write(f"Vector DB: {config.VECTOR_STORE_TYPE}")
             sidebar_settings()
         # -----------------------------------------------------
 
