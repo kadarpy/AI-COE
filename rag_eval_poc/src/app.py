@@ -1293,7 +1293,7 @@ def main():
     display_header()
 
     # Create tabs for Chat and Evaluation
-    tab_chat, tab_analytics, tab_evaluation = st.tabs(["Chat", "Analytics", "Evaluation"])
+    tab_chat, tab_analytics, tab_evaluation, tab_advanced = st.tabs(["Chat", "Analytics", "Evaluation", "Advanced Evaluation"])
 
     with tab_chat:
 
@@ -1419,6 +1419,217 @@ def main():
 
             with eval_tab4:
                 display_clean_dashboard()
+
+    # ========================================================
+    # ADVANCED EVALUATION TAB (Phase 2)
+    # ========================================================
+
+    with tab_advanced:
+        st.markdown("### Advanced Evaluation (Phase 2)")
+
+        if not st.session_state.evaluation_results:
+            st.info("ℹ Run batch evaluation to see advanced features")
+            return
+
+        if st.session_state.evaluator is None:
+            st.session_state.evaluator = UIEvaluator(st.session_state.bot.qa_chain)
+
+        # Create sub-tabs for advanced features
+        adv_tab1, adv_tab2, adv_tab3, adv_tab4 = st.tabs(
+            ["Trained Models", "Pass/Fail Analysis", "Retrieval Metrics", "MLflow Tracking"]
+        )
+
+        with adv_tab1:
+            st.subheader("Trained Model Predictions")
+
+            if not hasattr(st.session_state.evaluator, 'trained_evaluator') or not st.session_state.evaluator.trained_evaluator:
+                st.warning("⚠ Trained evaluator not initialized. Train models first.")
+                st.info("Use `python -m src.mlops.train_evaluator` to train models.")
+            elif not st.session_state.evaluator.trained_evaluator.is_available():
+                st.warning("⚠ No trained models available. Train models first.")
+                st.info("Use `python -m src.mlops.train_evaluator` to train models.")
+            else:
+                st.success("✓ Trained models available")
+
+                # Display predictions from evaluation results
+                trained_predictions = {
+                    "relevance": [],
+                    "hallucination": [],
+                    "faithfulness": []
+                }
+
+                for result in st.session_state.evaluation_results:
+                    predictions = result.get("trained_model_metrics", {})
+                    if predictions and predictions.get("status") != "error":
+                        for key in trained_predictions:
+                            if key in predictions and predictions[key] is not None:
+                                trained_predictions[key].append(predictions[key])
+
+                # Show statistics
+                for model_name, scores in trained_predictions.items():
+                    if scores:
+                        import statistics
+                        avg = statistics.mean(scores)
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric(f"{model_name.title()} (Avg)", f"{avg:.3f}")
+                        with col2:
+                            st.metric(f"{model_name.title()} (Min)", f"{min(scores):.3f}")
+                        with col3:
+                            st.metric(f"{model_name.title()} (Max)", f"{max(scores):.3f}")
+
+                        # Histogram
+                        fig = go.Figure()
+                        fig.add_trace(go.Histogram(x=scores, nbinsx=10))
+                        fig.update_layout(
+                            title=f"{model_name.title()} Distribution",
+                            xaxis_title="Score",
+                            yaxis_title="Frequency",
+                            height=300
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+
+        with adv_tab2:
+            st.subheader("Pass/Fail Analysis")
+
+            if not hasattr(st.session_state.evaluator, 'threshold_engine') or not st.session_state.evaluator.threshold_engine:
+                st.warning("⚠ Threshold engine not initialized")
+            else:
+                st.success("✓ Threshold engine active")
+
+                # Show threshold configuration
+                with st.expander("Threshold Configuration"):
+                    config_col1, config_col2, config_col3 = st.columns(3)
+                    with config_col1:
+                        st.metric("Relevance Min", config.THRESHOLD_RELEVANCE)
+                    with config_col2:
+                        st.metric("Faithfulness Min", config.THRESHOLD_FAITHFULNESS)
+                    with config_col3:
+                        st.metric("Hallucination Max", config.THRESHOLD_HALLUCINATION)
+
+                # Collect pass/fail results
+                pass_count = 0
+                fail_count = 0
+                pass_fail_details = []
+
+                for result in st.session_state.evaluation_results:
+                    pf = result.get("pass_fail")
+                    if pf:
+                        if pf.get("pass"):
+                            pass_count += 1
+                        else:
+                            fail_count += 1
+                        pass_fail_details.append({
+                            "test_id": result.get("test_id"),
+                            "pass": pf.get("pass"),
+                            "reason": pf.get("reason")
+                        })
+
+                # Summary metrics
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Passed", pass_count)
+                with col2:
+                    st.metric("Failed", fail_count)
+                with col3:
+                    pass_rate = (pass_count / (pass_count + fail_count) * 100) if (pass_count + fail_count) > 0 else 0
+                    st.metric("Pass Rate", f"{pass_rate:.1f}%")
+
+                # Results table
+                if pass_fail_details:
+                    st.write("---")
+                    st.write("**Detailed Results:**")
+                    st_col1, st_col2, st_col3 = st.columns([1, 2, 3])
+                    with st_col1:
+                        st.write("**ID**")
+                    with st_col2:
+                        st.write("**Status**")
+                    with st_col3:
+                        st.write("**Reason**")
+
+                    for detail in pass_fail_details:
+                        st_col1, st_col2, st_col3 = st.columns([1, 2, 3])
+                        with st_col1:
+                            st.write(detail["test_id"])
+                        with st_col2:
+                            status = "✓ PASS" if detail["pass"] else "✗ FAIL"
+                            st.write(status)
+                        with st_col3:
+                            st.write(detail["reason"])
+
+        with adv_tab3:
+            st.subheader("Retrieval Metrics")
+
+            if not hasattr(st.session_state.evaluator, 'retrieval_metrics') or not st.session_state.evaluator.retrieval_metrics:
+                st.warning("⚠ Retrieval metrics not initialized")
+            else:
+                st.success("✓ Retrieval metrics available")
+
+                # Collect metrics
+                recall_scores = []
+                precision_scores = []
+                coverage_scores = []
+
+                for result in st.session_state.evaluation_results:
+                    ret_metrics = result.get("retrieval_metrics")
+                    if ret_metrics and "error" not in ret_metrics:
+                        if "recall_at_k" in ret_metrics and ret_metrics["recall_at_k"] is not None:
+                            recall_scores.append(ret_metrics["recall_at_k"])
+                        if "precision_at_k" in ret_metrics and ret_metrics["precision_at_k"] is not None:
+                            precision_scores.append(ret_metrics["precision_at_k"])
+                        if "coverage" in ret_metrics and ret_metrics["coverage"] is not None:
+                            coverage_scores.append(ret_metrics["coverage"])
+
+                # Display statistics
+                if recall_scores:
+                    import statistics
+
+                    col1, col2, col3 = st.columns(3)
+
+                    with col1:
+                        st.metric("Recall@K (Avg)", f"{statistics.mean(recall_scores):.3f}")
+                        fig_recall = go.Figure()
+                        fig_recall.add_trace(go.Histogram(x=recall_scores, nbinsx=10, name="Recall@K"))
+                        fig_recall.update_layout(height=250, title="Recall@K Distribution")
+                        st.plotly_chart(fig_recall, use_container_width=True)
+
+                    with col2:
+                        st.metric("Precision@K (Avg)", f"{statistics.mean(precision_scores):.3f}")
+                        fig_prec = go.Figure()
+                        fig_prec.add_trace(go.Histogram(x=precision_scores, nbinsx=10, name="Precision@K", marker_color="orange"))
+                        fig_prec.update_layout(height=250, title="Precision@K Distribution")
+                        st.plotly_chart(fig_prec, use_container_width=True)
+
+                    with col3:
+                        st.metric("Coverage (Avg)", f"{statistics.mean(coverage_scores):.3f}")
+                        fig_cov = go.Figure()
+                        fig_cov.add_trace(go.Histogram(x=coverage_scores, nbinsx=10, name="Coverage", marker_color="green"))
+                        fig_cov.update_layout(height=250, title="Coverage Distribution")
+                        st.plotly_chart(fig_cov, use_container_width=True)
+                else:
+                    st.info("No retrieval metrics available")
+
+        with adv_tab4:
+            st.subheader("MLflow Tracking")
+
+            if not hasattr(st.session_state.evaluator, 'mlflow_tracker') or not st.session_state.evaluator.mlflow_tracker:
+                st.warning("⚠ MLflow tracking not enabled")
+                st.info("Enable MLflow in config: ENABLE_MLFLOW=true")
+            else:
+                st.success("✓ MLflow tracking enabled")
+
+                # Show MLflow info
+                mlflow_info = st.session_state.evaluator.mlflow_tracker.get_experiment_info()
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Experiment", mlflow_info.get("experiment_name", "N/A"))
+                with col2:
+                    st.metric("Experiment ID", mlflow_info.get("experiment_id", "N/A"))
+
+                st.write(f"**Tracking URI:** `{mlflow_info.get('tracking_uri', 'N/A')}`")
+
+                st.info("View MLflow UI:\n```\nmlflow ui --backend-store-uri file:mlruns\n```")
 
 # =========================================================
 

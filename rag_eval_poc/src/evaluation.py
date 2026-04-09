@@ -58,6 +58,26 @@ from config import config
 # ===========================
 from ml_evaluator import get_ml_evaluator
 
+# ===========================
+# IMPORT MLOPS COMPONENTS (Phase 2)
+# ===========================
+try:
+    from mlops.mlflow_tracker import get_mlflow_tracker
+    from mlops.evaluator_model import TrainedEvaluator
+    from mlops.thresholds import ThresholdEngine, ThresholdConfig, get_threshold_engine
+    MLOPS_AVAILABLE = True
+except ImportError:
+    logger.warning("MLOps components not available. Running without MLflow/advanced features.")
+    MLOPS_AVAILABLE = False
+
+# Import retrieval metrics
+try:
+    from evaluation.retrieval_metrics import RetrievalMetrics
+    RETRIEVAL_METRICS_AVAILABLE = True
+except ImportError:
+    logger.warning("Retrieval metrics module not available.")
+    RETRIEVAL_METRICS_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO,
@@ -362,6 +382,50 @@ class UIEvaluator:
             logger.warning(f"ML Evaluator initialization failed: {e}. Continuing without ML metrics.")
             self.ml_evaluator = None
         
+        # Initialize Phase 2 components (optional)
+        self.mlflow_tracker = None
+        self.trained_evaluator = None
+        self.threshold_engine = None
+        self.retrieval_metrics = None
+        
+        if MLOPS_AVAILABLE and config.ENABLE_MLFLOW:
+            try:
+                self.mlflow_tracker = get_mlflow_tracker(
+                    tracking_uri=str(config.MLFLOW_TRACKING_DIR)
+                )
+                logger.info("MLflow tracker initialized")
+            except Exception as e:
+                logger.warning(f"MLflow initialization failed: {e}")
+        
+        if MLOPS_AVAILABLE and config.ENABLE_TRAINED_EVAL:
+            try:
+                self.trained_evaluator = TrainedEvaluator(model_dir=str(config.MODEL_DIR))
+                if self.trained_evaluator.is_available():
+                    logger.info(f"Trained evaluator initialized with {len(self.trained_evaluator.available_models)} models")
+                else:
+                    logger.info("No trained models available yet")
+            except Exception as e:
+                logger.warning(f"Trained evaluator initialization failed: {e}")
+        
+        if MLOPS_AVAILABLE and config.ENABLE_THRESHOLDS:
+            try:
+                threshold_config = ThresholdConfig(
+                    relevance=config.THRESHOLD_RELEVANCE,
+                    faithfulness=config.THRESHOLD_FAITHFULNESS,
+                    hallucination=config.THRESHOLD_HALLUCINATION
+                )
+                self.threshold_engine = ThresholdEngine(threshold_config)
+                logger.info("Threshold engine initialized")
+            except Exception as e:
+                logger.warning(f"Threshold engine initialization failed: {e}")
+        
+        if RETRIEVAL_METRICS_AVAILABLE:
+            try:
+                self.retrieval_metrics = RetrievalMetrics(k=config.RETRIEVER_K_FOR_METRICS)
+                logger.info("Retrieval metrics initialized")
+            except Exception as e:
+                logger.warning(f"Retrieval metrics initialization failed: {e}")
+        
         logger.info("UIEvaluator initialized")
 
     def evaluate_single_test(self, test_case: Dict[str, Any]) -> Dict[str, Any]:
@@ -460,6 +524,82 @@ class UIEvaluator:
         }
 
         # =========================================
+        # PHASE 2: TRAINED MODEL PREDICTIONS
+        # =========================================
+        trained_model_metrics = {}
+        if self.trained_evaluator and self.trained_evaluator.is_available():
+            try:
+                logger.debug("Running trained evaluator...")
+                
+                # Prepare features for trained model
+                features = {
+                    "semantic_relevance": ml_metrics.get("semantic_relevance", 0.5),
+                    "context_overlap": ml_metrics.get("context_overlap", 0.5),
+                    "confidence_score": ml_metrics.get("confidence_score", 0.5),
+                    "context_length": context_length,
+                    "num_context_docs": num_docs
+                }
+                
+                predictions = self.trained_evaluator.predict(features)
+                trained_model_metrics = predictions
+                logger.debug(f"Trained model predictions: {trained_model_metrics}")
+            except Exception as e:
+                logger.error(f"Trained evaluator failed: {e}")
+                trained_model_metrics = {"status": "error", "error": str(e)}
+        
+        output["trained_model_metrics"] = trained_model_metrics
+
+        # =========================================
+        # PHASE 2: AUTO-THRESHOLD SCORING
+        # =========================================
+        pass_fail_result = None
+        if self.threshold_engine:
+            try:
+                logger.debug("Running threshold evaluation...")
+                
+                # Combine all metrics for threshold evaluation
+                all_metrics = {
+                    "relevance": ml_metrics.get("semantic_relevance"),
+                    "faithfulness": eval_result.get("metrics", {}).get("Faithfulness", {}).get("score"),
+                    "hallucination": eval_result.get("metrics", {}).get("Hallucination", {}).get("score")
+                }
+                
+                pass_fail_result = self.threshold_engine.evaluate_pass_fail(all_metrics)
+                logger.info(f"Pass/Fail: {pass_fail_result['pass']} - {pass_fail_result['reason']}")
+            except Exception as e:
+                logger.error(f"Threshold evaluation failed: {e}")
+                pass_fail_result = {
+                    "pass": False,
+                    "reason": f"Threshold evaluation error: {str(e)}",
+                    "details": {}
+                }
+        
+        output["pass_fail"] = pass_fail_result
+
+        # =========================================
+        # PHASE 2: RETRIEVAL METRICS
+        # =========================================
+        retrieval_metrics_result = None
+        if self.retrieval_metrics:
+            try:
+                logger.debug("Computing retrieval metrics...")
+                
+                # Extract ground truth context from test case if available
+                ground_truth_context = test_case.get("ground_truth_context", [])
+                
+                retrieval_metrics_result = self.retrieval_metrics.compute_all(
+                    retrieved_docs=retrieval_context,
+                    retrieved_context="\n".join(retrieval_context),
+                    ground_truth_docs=ground_truth_context
+                )
+                logger.debug(f"Retrieval metrics: {retrieval_metrics_result}")
+            except Exception as e:
+                logger.error(f"Retrieval metrics computation failed: {e}")
+                retrieval_metrics_result = {"error": str(e)}
+        
+        output["retrieval_metrics"] = retrieval_metrics_result
+        
+        # =========================================
         # STEP: Log Training Data (JSONL append)
         # =========================================
         self._log_training_data(output, retrieval_context, labels)
@@ -542,6 +682,12 @@ class UIEvaluator:
         """
         Evaluate multiple test cases.
         
+        With MLflow integration (if enabled):
+        - Start MLflow run
+        - Log parameters and batch metrics
+        - Log training data artifact
+        - End run on completion
+        
         Args:
             test_cases: List of test case dicts
             progress_callback: Optional progress callback
@@ -551,6 +697,23 @@ class UIEvaluator:
         """
         logger.info(f"Batch evaluation: {len(test_cases)} cases")
         
+        # Start MLflow run (if available)
+        mlflow_run_id = None
+        if self.mlflow_tracker:
+            try:
+                tags = {
+                    "num_test_cases": len(test_cases),
+                    "mlflow_enabled": True
+                }
+                mlflow_run_id = self.mlflow_tracker.start_run(
+                    run_name=f"batch_eval_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    tags=tags
+                )
+                logger.info(f"Started MLflow run: {mlflow_run_id}")
+            except Exception as e:
+                logger.error(f"Failed to start MLflow run: {e}")
+        
+        # Evaluate all test cases
         for i, test_case in enumerate(test_cases, 1):
             try:
                 self.evaluate_single_test(test_case)
@@ -562,6 +725,55 @@ class UIEvaluator:
                     "test_id": test_case.get("id", i),
                     "error": str(e)
                 })
+        
+        # Log metrics to MLflow
+        if self.mlflow_tracker and mlflow_run_id:
+            try:
+                summary = self.get_results_summary()
+                
+                # Log batch-level parameters
+                params = {
+                    "num_tests": len(test_cases),
+                    "relevance_threshold": config.THRESHOLD_RELEVANCE,
+                    "faithfulness_threshold": config.THRESHOLD_FAITHFULNESS,
+                    "hallucination_threshold": config.THRESHOLD_HALLUCINATION
+                }
+                self.mlflow_tracker.log_params(params)
+                
+                # Log batch-level metrics
+                metrics = {
+                    "total_tests": summary.get("total_tests", 0),
+                    "ml_failures": summary.get("ml_failures", 0),
+                    "deepeval_failures": summary.get("deepeval_failures", 0)
+                }
+                
+                # Add metric statistics
+                for metric_name, stats in summary.get("metric_statistics", {}).items():
+                    metrics[f"deepeval_{metric_name}_mean"] = stats.get("mean", 0)
+                    metrics[f"deepeval_{metric_name}_min"] = stats.get("min", 0)
+                    metrics[f"deepeval_{metric_name}_max"] = stats.get("max", 0)
+                
+                # Add ML metrics statistics
+                for ml_metric_name, stats in summary.get("ml_metrics_statistics", {}).items():
+                    metrics[f"ml_{ml_metric_name}_mean"] = stats.get("mean", 0)
+                    metrics[f"ml_{ml_metric_name}_min"] = stats.get("min", 0)
+                    metrics[f"ml_{ml_metric_name}_max"] = stats.get("max", 0)
+                
+                self.mlflow_tracker.log_metrics(metrics)
+                
+                # Log training data artifact
+                try:
+                    training_data_path = str(config.TRAINING_DATA_PATH)
+                    if Path(training_data_path).exists():
+                        self.mlflow_tracker.log_artifact(training_data_path, artifact_path="data")
+                except Exception as e:
+                    logger.warning(f"Failed to log training data artifact: {e}")
+                
+                # End run
+                self.mlflow_tracker.end_run()
+                logger.info(f"MLflow run completed: {mlflow_run_id}")
+            except Exception as e:
+                logger.error(f"Failed to log metrics to MLflow: {e}")
         
         return self.results
 

@@ -15,6 +15,8 @@ openai>=1.0.0
 groq>=0.9.0
 sentence-transformers>=2.0.0
 scikit-learn>=1.0.0
+xgboost>=2.0.0
+mlflow>=2.0.0
 reportlab
 streamlit>=1.28.0
 Pillow>=10.0.0
@@ -23,4 +25,3 @@ uvicorn>=0.24.0
 pydantic>=2.0.0
 pandas>=2.0.0
 plotly>=5.0.0
-

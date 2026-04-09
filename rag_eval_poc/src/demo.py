@@ -8,7 +8,7 @@ from typing import Optional
 
 from config import config
 from validators import InputValidator, OutputValidator, ValidationError
-from rag.loader import load_documents
+from rag.loader import load_documents, load_documents_from_directory
 from rag.vector_store import build_vector_store, load_vector_store
 from rag.rag_chain import build_rag_chain
 
@@ -23,21 +23,28 @@ logger = logging.getLogger(__name__)
 class RAGBotDemo:
     """Main RAG Bot Demo class"""
 
-    def __init__(self, pdf_path: Optional[str] = None):
+    def __init__(self, pdf_path: Optional[str] = None, documents_dir: Optional[str] = None):
         """
         Initialize RAG Bot
         
         Args:
-            pdf_path: Path to document file (PDF or TXT) - defaults to document.txt
+            pdf_path: Path to single document file (PDF or TXT) - defaults to document.txt
+            documents_dir: Path to directory with multiple documents (Phase 2)
         """
-        # Default to document.txt instead of sample_doc.pdf
+        # Support both single file and directory loading
         self.pdf_path = pdf_path or str(config.DEFAULT_DOCUMENT_PATH)
+        self.documents_dir = documents_dir
         self.qa_chain = None
         self.vectordb = None
+        self.loader_mode = "document" if not documents_dir else "directory"
 
     def setup(self) -> bool:
         """
         Setup RAG Bot
+        
+        Supports:
+        - Single file loading (pdf_path)
+        - Multi-file directory loading (documents_dir)
         
         Returns:
             True if setup successful, False otherwise
@@ -49,7 +56,6 @@ class RAGBotDemo:
             logger.info("Configuration validated successfully")
 
             # Check if vector store exists
-            # Check if vector store exists
             if config.CHROMA_DB_DIR.exists():
                 try:
                     self.vectordb = load_vector_store()
@@ -60,14 +66,28 @@ class RAGBotDemo:
 
                 except Exception as e:
                     logger.warning(f"Vector DB invalid → rebuilding: {e}")
-                    chunks = load_documents(self.pdf_path)
+                    
+                    # Load documents (single or multi)
+                    if self.documents_dir:
+                        logger.info(f"Loading documents from directory: {self.documents_dir}")
+                        chunks = load_documents_from_directory(self.documents_dir)
+                    else:
+                        logger.info(f"Loading document from file: {self.pdf_path}")
+                        chunks = load_documents(self.pdf_path)
+                    
                     self.vectordb = build_vector_store(chunks)
 
             else:
-                # THIS BLOCK WAS MISSING (ROOT CAUSE)
                 logger.info("No existing vector DB found → building new one")
-
-                chunks = load_documents(self.pdf_path)
+                
+                # Load documents (single or multi)
+                if self.documents_dir:
+                    logger.info(f"Loading documents from directory: {self.documents_dir}")
+                    chunks = load_documents_from_directory(self.documents_dir)
+                else:
+                    logger.info(f"Loading document from file: {self.pdf_path}")
+                    chunks = load_documents(self.pdf_path)
+                
                 self.vectordb = build_vector_store(chunks)
 
             # Build RAG chain

@@ -67,6 +67,24 @@ class Config:
     EVAL_TEST_CASES_PATH = EVALUATION_DIR / "test_cases.yaml"
     TRAINING_DATA_PATH = PROJECT_ROOT / "tests" / "results" / "training_data.jsonl"
     
+    # MLflow Configuration (Phase 2)
+    ENABLE_MLFLOW = os.getenv("ENABLE_MLFLOW", "true").lower() in ("true", "1", "yes")
+    MLFLOW_TRACKING_DIR = PROJECT_ROOT / "mlruns"
+    MLFLOW_EXPERIMENT_NAME = "rag_evaluation"
+    
+    # Model Training Configuration
+    ENABLE_TRAINED_EVAL = os.getenv("ENABLE_TRAINED_EVAL", "true").lower() in ("true", "1", "yes")
+    MODEL_DIR = PROJECT_ROOT / "models"
+    
+    # Threshold Scoring Configuration
+    ENABLE_THRESHOLDS = os.getenv("ENABLE_THRESHOLDS", "true").lower() in ("true", "1", "yes")
+    THRESHOLD_RELEVANCE = float(os.getenv("THRESHOLD_RELEVANCE", "0.75"))
+    THRESHOLD_FAITHFULNESS = float(os.getenv("THRESHOLD_FAITHFULNESS", "0.80"))
+    THRESHOLD_HALLUCINATION = float(os.getenv("THRESHOLD_HALLUCINATION", "0.20"))
+    
+    # Retrieval metrics configuration
+    RETRIEVER_K_FOR_METRICS = int(os.getenv("RETRIEVER_K_FOR_METRICS", "3"))
+    
     @staticmethod
     def validate():
         """Validate configuration"""
@@ -93,6 +111,8 @@ class Config:
         Config.DATA_DIR.mkdir(parents=True, exist_ok=True)
         Config.DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
         Config.EVALUATION_DIR.mkdir(parents=True, exist_ok=True)
+        Config.MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        Config.MLFLOW_TRACKING_DIR.mkdir(parents=True, exist_ok=True)
 
         return True
 
