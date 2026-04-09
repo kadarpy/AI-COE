@@ -477,7 +477,7 @@ class UIEvaluator:
         """
         Log evaluation results for future model training.
         
-        Saves structured data to tests/results/training_data.jsonl (JSONL format).
+        Saves structured data to training_data.jsonl (JSONL format).
         Uses append mode for scalability - each record is a single JSON line.
         This data can be used to train or fine-tune evaluation models.
         
@@ -487,7 +487,7 @@ class UIEvaluator:
             labels: Optional ground truth labels from test case
         """
         try:
-            training_data_path = Path(__file__).parent.parent / "tests" / "results" / "training_data.jsonl"
+            training_data_path = Path(config.TRAINING_DATA_PATH)
             training_data_path.parent.mkdir(parents=True, exist_ok=True)
             
             # Create training record

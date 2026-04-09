@@ -138,13 +138,23 @@ def build_vector_store(chunks):
 
         # =========================================
         # FIX: Check if DB already has documents
+        # uses safe wrapper for internal API access
         # =========================================
         try:
-            existing_count = vectordb._collection.count()
-            logger.info(f"Vector store already contains {existing_count} documents")
+            # Safely access collection count
+            has_documents = False
+            if hasattr(vectordb, '_collection'):
+                try:
+                    existing_count = vectordb._collection.count()
+                    has_documents = existing_count > 0
+                    if has_documents:
+                        logger.info(f"Vector store already contains {existing_count} documents")
+                except Exception as e:
+                    logger.debug(f"Could not determine collection count: {e}, attempting fresh add")
+                    has_documents = False
             
-            if existing_count == 0:
-                # DB is empty, add documents
+            if not has_documents:
+                # DB is empty or cannot determine, add documents
                 logger.info("Adding documents to vector store...")
                 vectordb.add_documents(chunks)
                 logger.info(f"{len(chunks)} documents successfully stored in vector DB")

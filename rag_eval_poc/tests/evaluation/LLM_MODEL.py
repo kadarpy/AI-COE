@@ -20,7 +20,7 @@ class GroqModel(DeepEvalBaseLLM):
 
     def load_model(self):
         """Required by DeepEval"""
-        self.client = Groq(api_key=self.api_key)
+        self.client = Groq(api_key=self.api_key, timeout=30, max_retries=3)
 
     def generate(self, prompt: str) -> str:
         response = self.client.chat.completions.create(

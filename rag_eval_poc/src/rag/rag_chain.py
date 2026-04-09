@@ -89,9 +89,9 @@ class RAGChain:
             - retrieval_count: Number of documents retrieved
         """
         query = input_dict.get("query", "")
-
-        if query.lower().startswith("what is"):
-            query += " definition meaning explanation"
+        
+        # NOTE: Query rewriting removed for evaluation integrity
+        # Do NOT mutate queries - they should be evaluated as-is
         logger.info(f"RAGChain.invoke called with query: {query[:100]}")
 
         # STEP 1: MANDATORY RETRIEVAL (this is what makes it RAG, not LLM)

@@ -237,6 +237,22 @@ textarea {
 # SESSION STATE
 # =========================================================
 
+def cleanup_memory():
+    """Clean up memory resources to prevent memory leaks"""
+    try:
+        # Clean up session state resources
+        if "bot" in st.session_state and st.session_state.bot is not None:
+            # Release evaluator if exists
+            if hasattr(st.session_state.bot, 'evaluator'):
+                st.session_state.bot.evaluator = None
+        
+        # Force garbage collection
+        gc.collect()
+        logger.debug("Memory cleanup completed")
+    except Exception as e:
+        logger.warning(f"Error during memory cleanup: {e}")
+
+
 def initialize_session():
 
     if "conversation_history" not in st.session_state:
@@ -402,7 +418,7 @@ def sidebar_settings():
 
         if st.button("Reset Vector Database", key="sidebar_reset"):
 
-            db_path = Path("src/chroma_db")
+            db_path = Path(config.CHROMA_DB_DIR)
 
             try:
                 if "bot" in st.session_state:

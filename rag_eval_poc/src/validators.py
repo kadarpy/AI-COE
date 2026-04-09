@@ -4,6 +4,7 @@ Validation module for RAG Bot
 from typing import Any, Tuple
 from config import config
 import logging
+import html
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,8 @@ class InputValidator:
         if not isinstance(question, str):
             return False, "Question must be a string"
 
+        # XSS protection: escape HTML characters
+        question = html.escape(question, quote=True)
         question = question.strip()
 
         if len(question) == 0:
@@ -83,6 +86,9 @@ class OutputValidator:
         """
         if not isinstance(answer, str):
             return False, "Answer must be a string"
+
+        # XSS protection: escape HTML characters
+        answer = html.escape(answer, quote=True)
 
         if len(answer) == 0:
             return False, "Answer cannot be empty"

@@ -10,6 +10,10 @@ test_cases:
       - "Saltwater (oceans): ~97.5%\nFreshwater: ~2.5%"
       - "Although water covers approximately 71% of Earth's surface, only about 2.5% is freshwater, and less than 1% is readily accessible for human use."
     difficulty: easy
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
     notes: "Core factual retrieval"
 
   - id: 2
@@ -19,6 +23,10 @@ test_cases:
     ground_truth_context:
       - "Glaciers and ice caps: ~68.7%"
     difficulty: easy
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
     notes: "Numerical recall"
 
   - id: 3
@@ -28,6 +36,10 @@ test_cases:
     ground_truth_context:
       - "Groundwater: ~30.1%"
     difficulty: easy
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 4
     category: straightforward
@@ -36,6 +48,10 @@ test_cases:
     ground_truth_context:
       - "Agriculture accounts for ~70% of global freshwater withdrawals"
     difficulty: easy
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 5
     category: straightforward
@@ -44,6 +60,10 @@ test_cases:
     ground_truth_context:
       - "Industries consume ~20% of freshwater"
     difficulty: easy
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 6
     category: straightforward
@@ -52,6 +72,10 @@ test_cases:
     ground_truth_context:
       - "Occurs when natural water resources are insufficient to meet demand."
     difficulty: easy
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 7
     category: straightforward
@@ -60,6 +84,10 @@ test_cases:
     ground_truth_context:
       - "Occurs when water exists but infrastructure or governance is inadequate."
     difficulty: easy
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 8
     category: straightforward
@@ -68,6 +96,10 @@ test_cases:
     ground_truth_context:
       - "Groundwater depletion occurs when extraction exceeds natural recharge rates."
     difficulty: easy
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 9
     category: straightforward
@@ -76,6 +108,10 @@ test_cases:
     ground_truth_context:
       - "Agricultural runoff (nitrogen, phosphorus)\nIndustrial effluents (heavy metals)"
     difficulty: easy
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 10
     category: straightforward
@@ -84,6 +120,10 @@ test_cases:
     ground_truth_context:
       - "Converts seawater to freshwater"
     difficulty: easy
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 11
     category: straightforward
@@ -92,6 +132,10 @@ test_cases:
     ground_truth_context:
       - "Surface water (rivers, lakes): ~1.2%\nRivers and lakes combined: <0.01% of total water"
     difficulty: easy
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 12
     category: straightforward
@@ -100,6 +144,10 @@ test_cases:
     ground_truth_context:
       - "Water demand expected to increase by 20–30% by 2050"
     difficulty: easy
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
 
   # ========== MEDIUM / REASONING (8) ==========
@@ -112,6 +160,10 @@ test_cases:
       - "Agriculture accounts for ~70% of global freshwater withdrawals"
       - "Inefficient irrigation methods (flood irrigation) lead to significant wastage"
     difficulty: medium
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 14
     category: reasoning
@@ -122,6 +174,10 @@ test_cases:
       - "Increases frequency of droughts and floods"
       - "Accelerates glacier melt, impacting long-term water supply"
     difficulty: medium
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 15
     category: reasoning
@@ -132,6 +188,10 @@ test_cases:
       - "Reduced agricultural productivity"
       - "Saline intrusion in coastal areas"
     difficulty: medium
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 16
     category: reasoning
@@ -142,6 +202,10 @@ test_cases:
       - "Groundwater: ~30.1%"
       - "Surface water (rivers, lakes): ~1.2%"
     difficulty: medium
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 17
     category: reasoning
@@ -151,6 +215,10 @@ test_cases:
       - "Contamination of rivers and groundwater"
       - "Leads to reduced potable water availability"
     difficulty: medium
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 18
     category: reasoning
@@ -161,6 +229,10 @@ test_cases:
       - "Major rivers under stress"
       - "Urban water shortages increasing"
     difficulty: medium
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 19
     category: reasoning
@@ -170,6 +242,10 @@ test_cases:
       - "Sensors for water monitoring"
       - "Predictive analytics for demand management"
     difficulty: medium
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 20
     category: reasoning
@@ -179,6 +255,10 @@ test_cases:
       - "Converts seawater to freshwater"
       - "High energy cost"
     difficulty: medium
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
 
   # ========== HARD / MULTI-HOP (5) ==========
@@ -193,6 +273,10 @@ test_cases:
       - "Over-irrigation"
       - "Urban water demand"
     difficulty: hard
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 22
     category: multi_hop
@@ -202,6 +286,10 @@ test_cases:
       - "Physical Water Scarcity: Occurs when natural water resources are insufficient to meet demand. Common in arid regions (e.g., Middle East, North Africa)"
       - "Economic Water Scarcity: Occurs when water exists but infrastructure or governance is inadequate. Common in developing regions (e.g., Sub-Saharan Africa)"
     difficulty: hard
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 23
     category: multi_hop
@@ -213,6 +301,10 @@ test_cases:
       - "Pollution control laws"
       - "Groundwater extraction limits"
     difficulty: hard
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 24
     category: multi_hop
@@ -223,6 +315,10 @@ test_cases:
       - "Agriculture accounts for ~70% of global freshwater withdrawals"
       - "Industries consume ~20% of freshwater"
     difficulty: hard
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
   - id: 25
     category: multi_hop
@@ -232,6 +328,10 @@ test_cases:
       - "The global freshwater crisis refers to the increasing imbalance between water demand and availability, driven by population growth, climate change, pollution, and inefficient resource management."
       - "Shared river basins require agreements"
     difficulty: hard
+    labels:
+      relevance: 1
+      hallucination: 0
+      faithfulness: 1
 
 
   # ========== HALLUCINATION / OUT-OF-SCOPE (10) ==========
@@ -242,6 +342,10 @@ test_cases:
     expected_answer: "This information is not provided in the document"
     ground_truth_context: []
     difficulty: hard
+    labels:
+      relevance: 0
+      hallucination: 1
+      faithfulness: 0
 
   - id: 27
     category: unanswerable
@@ -249,6 +353,10 @@ test_cases:
     expected_answer: "The document does not specify countries"
     ground_truth_context: []
     difficulty: hard
+    labels:
+      relevance: 0
+      hallucination: 1
+      faithfulness: 0
 
   - id: 28
     category: unanswerable
@@ -256,6 +364,10 @@ test_cases:
     expected_answer: "Cost data is not provided in the document"
     ground_truth_context: []
     difficulty: hard
+    labels:
+      relevance: 0
+      hallucination: 1
+      faithfulness: 0
 
   - id: 29
     category: unanswerable
@@ -263,6 +375,10 @@ test_cases:
     expected_answer: "The document does not mention specific companies"
     ground_truth_context: []
     difficulty: hard
+    labels:
+      relevance: 0
+      hallucination: 1
+      faithfulness: 0
 
   - id: 30
     category: unanswerable
@@ -270,6 +386,10 @@ test_cases:
     expected_answer: "The document does not define a specific starting year"
     ground_truth_context: []
     difficulty: hard
+    labels:
+      relevance: 0
+      hallucination: 1
+      faithfulness: 0
 
   - id: 31
     category: unanswerable
@@ -277,6 +397,10 @@ test_cases:
     expected_answer: "The document does not specify who discovered this"
     ground_truth_context: []
     difficulty: hard
+    labels:
+      relevance: 0
+      hallucination: 1
+      faithfulness: 0
     notes: "Tests hallucination - model may invent historical figures"
 
   - id: 32
@@ -285,6 +409,10 @@ test_cases:
     expected_answer: "This specific measurement is not provided in the document"
     ground_truth_context: []
     difficulty: hard
+    labels:
+      relevance: 0
+      hallucination: 1
+      faithfulness: 0
     notes: "Tests fabrication of specific numerical data"
 
   - id: 33
@@ -293,6 +421,10 @@ test_cases:
     expected_answer: "The document does not provide this biological specification"
     ground_truth_context: []
     difficulty: hard
+    labels:
+      relevance: 0
+      hallucination: 1
+      faithfulness: 0
     notes: "Tests if model confuses general knowledge with document content"
 
   - id: 34
@@ -301,6 +433,10 @@ test_cases:
     expected_answer: "The document does not rank continents by recycling infrastructure"
     ground_truth_context: []
     difficulty: hard
+    labels:
+      relevance: 0
+      hallucination: 1
+      faithfulness: 0
     notes: "Tests model resistance to making comparative claims"
 
   - id: 35
@@ -309,4 +445,8 @@ test_cases:
     expected_answer: "No specific companies are mentioned in the document"
     ground_truth_context: []
     difficulty: hard
+    labels:
+      relevance: 0
+      hallucination: 1
+      faithfulness: 0
     notes: "Tests if model fabricates company names"

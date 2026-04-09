@@ -1,11 +1,11 @@
 """
-DeepEval Integration for RAG Bot Evaluation
+HYBRID EVALUATION RUNNER - DeepEval + ML Evaluator
+====================================================
+Runs structured LLM evaluations combined with ML-based scoring.
 
-This module runs structured LLM evaluations using DeepEval metrics:
-- Hallucination: Did the bot make up facts?
-- Faithfulness: Did the bot stick to the source documents?
-- Answer Relevancy: Did the bot answer the actual question?
-- Contextual Recall: Did the bot retrieve relevant context?
+This module executes:
+- DeepEval metrics: Hallucination, Faithfulness, AnswerRelevancy, ContextualRecall
+- ML Evaluator: Semantic relevance, context overlap, confidence scoring
 """
 
 import os
@@ -61,7 +61,7 @@ class TestCaseLoader:
     """Load and validate test cases from YAML"""
 
 class RAGEvaluator:
-    """Evaluate RAG bot using pure DeepEval (no custom logic)"""
+    """Evaluate RAG bot using hybrid evaluation (DeepEval + ML Evaluator)"""
     
     def __init__(self, documents_dir: str = None):
         """Initialize RAG chain and evaluator"""
@@ -139,10 +139,6 @@ def main():
     except Exception as e:
         logger.error(f"Evaluation failed: {e}", exc_info=True)
         sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
 
 
 if __name__ == "__main__":

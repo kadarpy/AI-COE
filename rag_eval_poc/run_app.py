@@ -13,6 +13,10 @@ if __name__ == "__main__":
     app_path = src_path / "app.py"
     
     # Run streamlit directly
-    subprocess.run([
+    result = subprocess.run([
         sys.executable, "-m", "streamlit", "run", str(app_path)
     ])
+    
+    # Exit with appropriate code if Streamlit fails
+    if result.returncode != 0:
+        sys.exit(result.returncode)

@@ -26,7 +26,7 @@ class Config:
     DEFAULT_DOCUMENT_PATH = DOCUMENTS_DIR / "document.txt"
 
     # LLM Provider Configuration (supports multiple providers)
-    LLM_PROVIDER = os.getenv("LLM_PROVIDER").lower()
+    LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
     
     # Groq Configuration (FREE - RECOMMENDED)
     API_KEY = os.getenv("API_KEY", "")
@@ -57,14 +57,15 @@ class Config:
     RERANK_TOP_K = int(os.getenv("RERANK_TOP_K", "3"))  # Number of top documents to use for final context (strict mode)
 
     # Strict mode
-    STRICT_CONTEXT_MODE = os.getenv("STRICT_CONTEXT_MODE")
+    STRICT_CONTEXT_MODE = os.getenv("STRICT_CONTEXT_MODE", "false").lower() in ("true", "1", "yes")
 
     # Logging Configuration
-    LOG_LEVEL = os.getenv("LOG_LEVEL").upper()
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
     LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
     # Evaluation Configuration
     EVAL_TEST_CASES_PATH = EVALUATION_DIR / "test_cases.yaml"
+    TRAINING_DATA_PATH = PROJECT_ROOT / "tests" / "results" / "training_data.jsonl"
     
     @staticmethod
     def validate():
