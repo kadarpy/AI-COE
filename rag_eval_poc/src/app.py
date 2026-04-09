@@ -558,6 +558,88 @@ def display_chat():
             </div>
             """, unsafe_allow_html=True)
 
+            # NEW: Decision Insights Section
+            if msg.get("decision") or msg.get("confidence_score"):
+                with st.expander("🤖 AI Decision Insights"):
+                    col1, col2, col3 = st.columns(3)
+                    
+                    # Decision Status
+                    decision = msg.get("decision", {})
+                    decision_action = decision.get("action", "accept").upper()
+                    decision_color = {
+                        "ACCEPT": "🟢",
+                        "REJECT": "🔴",
+                        "RETRY": "🟡"
+                    }.get(decision_action, "⚪")
+                    
+                    with col1:
+                        st.metric("Decision", f"{decision_color} {decision_action}")
+                        if decision.get("reason"):
+                            st.caption(f"_Reason: {decision.get('reason')}_")
+                    
+                    # Confidence Score
+                    with col2:
+                        confidence = msg.get("confidence_score", 1.0)
+                        st.metric("Confidence", f"{confidence:.1%}")
+                        
+                    # Retry Count
+                    with col3:
+                        retry_count = msg.get("retry_count", 0)
+                        st.metric("Retries", f"{retry_count}")
+                    
+                    # Trained Predictions
+                    trained_pred = msg.get("trained_predictions", {})
+                    if trained_pred and trained_pred.get("status") != "no_models":
+                        st.subheader("Model Predictions")
+                        pred_cols = st.columns(3)
+                        
+                        if trained_pred.get("relevance") is not None:
+                            with pred_cols[0]:
+                                relevance = trained_pred.get("relevance", 0)
+                                st.metric("Relevance Score", f"{relevance:.2f}")
+                        
+                        if trained_pred.get("hallucination") is not None:
+                            with pred_cols[1]:
+                                hallucination = trained_pred.get("hallucination", 0)
+                                st.metric("Hallucination Risk", f"{hallucination:.2f}")
+                        
+                        if trained_pred.get("faithfulness") is not None:
+                            with pred_cols[2]:
+                                faithfulness = trained_pred.get("faithfulness", 0)
+                                st.metric("Faithfulness", f"{faithfulness:.2f}")
+                    
+                    # ML Validation Details
+                    validation = msg.get("validation", {})
+                    if validation:
+                        st.subheader("ML Validation Results")
+                        val_cols = st.columns(2)
+                        
+                        if "semantic_relevance" in validation:
+                            with val_cols[0]:
+                                st.metric("Semantic Relevance", f"{validation['semantic_relevance']:.2f}")
+                        
+                        if "context_overlap" in validation:
+                            with val_cols[1]:
+                                st.metric("Context Overlap", f"{validation['context_overlap']:.2f}")
+                    
+                    # Retrieval Metrics
+                    ret_metrics = msg.get("retrieval_metrics", {})
+                    if ret_metrics:
+                        st.subheader("Retrieval Metrics")
+                        ret_cols = st.columns(3)
+                        
+                        if "num_retrieved" in ret_metrics:
+                            with ret_cols[0]:
+                                st.metric("Docs Retrieved", int(ret_metrics['num_retrieved']))
+                        
+                        if "context_length" in ret_metrics:
+                            with ret_cols[1]:
+                                st.metric("Context Length", f"{int(ret_metrics['context_length'])} chars")
+                        
+                        if "avg_doc_length" in ret_metrics:
+                            with ret_cols[2]:
+                                st.metric("Avg Doc Length", f"{int(ret_metrics['avg_doc_length'])} chars")
+
             # Sources (keep as is)
             if msg.get("sources"):
                 with st.expander("Sources"):
@@ -1418,11 +1500,18 @@ def main():
                     if not is_valid:
                         st.warning("Generated answer may be low quality")
 
-                    #  Add assistant message
+                    #  Add assistant message with decision insights
                     st.session_state.conversation_history.append({
                         "role": "assistant",
                         "content": answer,
-                        "sources": sources
+                        "sources": sources,
+                        # NEW: Decision insights
+                        "decision": response.get("decision", {}),
+                        "confidence_score": response.get("confidence_score", 1.0),
+                        "validation": response.get("validation"),
+                        "trained_predictions": response.get("trained_predictions", {}),
+                        "retrieval_metrics": response.get("retrieval_metrics", {}),
+                        "retry_count": response.get("retry_count", 0)
                     })
 
                     st.session_state.stats["total_questions"] += 1

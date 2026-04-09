@@ -103,6 +103,37 @@ class Config:
     # Retrieval metrics configuration
     RETRIEVER_K_FOR_METRICS = int(os.getenv("RETRIEVER_K_FOR_METRICS", "3"))
     
+    # ========================================
+    # SELF-IMPROVING RAG CONFIGURATION (NEW)
+    # ========================================
+    
+    # Reranking Configuration
+    ENABLE_RERANKING = os.getenv("ENABLE_RERANKING", "true").lower() in ("true", "1", "yes")
+    RERANKER_MODEL = os.getenv("RERANKER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+    
+    # Answer Validation Configuration
+    ENABLE_ANSWER_VALIDATION = os.getenv("ENABLE_ANSWER_VALIDATION", "true").lower() in ("true", "1", "yes")
+    MIN_CONFIDENCE_THRESHOLD = float(os.getenv("MIN_CONFIDENCE_THRESHOLD", "0.5"))
+    
+    # Adaptive Retry Configuration
+    ENABLE_ADAPTIVE_RETRY = os.getenv("ENABLE_ADAPTIVE_RETRY", "true").lower() in ("true", "1", "yes")
+    MAX_RETRIES = int(os.getenv("MAX_RETRIES", "2"))
+    RETRIEVER_K_INCREMENT = int(os.getenv("RETRIEVER_K_INCREMENT", "2"))  # Increase K by this amount on retry
+    
+    # Decision Engine Configuration
+    ENABLE_DECISION_ENGINE = os.getenv("ENABLE_DECISION_ENGINE", "true").lower() in ("true", "1", "yes")
+    HALLUCINATION_REJECT_THRESHOLD = float(os.getenv("HALLUCINATION_REJECT_THRESHOLD", "0.5"))
+    
+    # Feedback Loop Configuration
+    ENABLE_FEEDBACK_LOOP = os.getenv("ENABLE_FEEDBACK_LOOP", "true").lower() in ("true", "1", "yes")
+    
+    # Trained Model Configuration (NEW)
+    ENABLE_TRAINED_EVAL = os.getenv("ENABLE_TRAINED_EVAL", "true").lower() in ("true", "1", "yes")
+    MODEL_DIR = Path(os.getenv("MODEL_DIR", str(Path(__file__).parent.parent / "models")))
+    TRAINING_DATA_PATH = Path(os.getenv("TRAINING_DATA_PATH", str(Path(__file__).parent.parent / "training_data" / "training_data.jsonl")))
+    
+    # Retrieval metrics configuration
+    
     @staticmethod
     def validate():
         """Validate configuration"""
