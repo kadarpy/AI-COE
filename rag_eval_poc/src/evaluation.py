@@ -46,6 +46,11 @@ from deepeval.metrics import (
 
 from config import config
 
+# ===========================
+# IMPORT ML EVALUATOR
+# ===========================
+from ml_evaluator import MLEvaluator
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO,
@@ -325,8 +330,11 @@ class TestCaseManager:
 
 class UIEvaluator:
     """
-    Evaluate RAG test cases with pure DeepEval.
-    No threshold logic, no pass/fail flags.
+    Evaluate RAG test cases with hybrid scoring:
+    1. DeepEval (LLM-based judge)
+    2. ML Evaluator (CrossEncoder for semantic relevance)
+    
+    Collects training data for future model improvements.
     """
 
     def __init__(self, qa_chain):
@@ -337,17 +345,26 @@ class UIEvaluator:
         self.qa_chain = qa_chain
         self.results = []
         self.test_case_manager = TestCaseManager()
+        
+        # Initialize ML evaluator once (singleton pattern)
+        try:
+            self.ml_evaluator = MLEvaluator()
+            logger.info("ML Evaluator initialized successfully")
+        except Exception as e:
+            logger.warning(f"ML Evaluator initialization failed: {e}. Continuing without ML metrics.")
+            self.ml_evaluator = None
+        
         logger.info("UIEvaluator initialized")
 
     def evaluate_single_test(self, test_case: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Evaluate single test case.
+        Evaluate single test case with hybrid scoring.
         
         Args:
             test_case: Dict with question, expected_answer, etc.
             
         Returns:
-            Result dict with metrics
+            Result dict with DeepEval metrics and ML metrics
         """
         question = test_case.get("question", "")
         expected_answer = test_case.get("expected_answer", "")
@@ -386,6 +403,26 @@ class UIEvaluator:
             retrieval_context=retrieval_context
         )
 
+        # =========================================
+        # STEP: Run ML Evaluator (NEW)
+        # =========================================
+        ml_metrics = {}
+        if self.ml_evaluator:
+            try:
+                logger.debug("Running ML Evaluator...")
+                ml_metrics = self.ml_evaluator.evaluate(
+                    question=question,
+                    answer=actual_answer,
+                    context=retrieval_context
+                )
+                logger.info(f"ML metrics computed: {ml_metrics}")
+            except Exception as e:
+                logger.error(f"ML Evaluator failed: {e}")
+                ml_metrics = {
+                    "error": str(e),
+                    "metrics_source": "ml_evaluator"
+                }
+
         # Assemble output
         output = {
             "test_id": test_id,
@@ -396,13 +433,78 @@ class UIEvaluator:
             "actual_answer": actual_answer,
             "num_retrieved_docs": len(retrieval_context),
             "metrics": eval_result.get("metrics", {}),
+            "ml_metrics": ml_metrics,  # NEW: ML-based scores
             "timestamp": datetime.now().isoformat()
         }
+
+        # =========================================
+        # STEP: Log Training Data (NEW)
+        # =========================================
+        self._log_training_data(output, retrieval_context)
 
         self.results.append(output)
         logger.info(f"Test {test_id} complete")
         
         return output
+
+    def _log_training_data(self, result: Dict[str, Any], context: List[str]) -> None:
+        """
+        Log evaluation results for future model training.
+        
+        Saves structured data to tests/results/training_data.json in append mode.
+        This data can be used to train or fine-tune evaluation models.
+        
+        Args:
+            result: Evaluation result dict
+            context: Retrieved context strings
+        """
+        try:
+            training_data_path = Path(__file__).parent.parent / "tests" / "results" / "training_data.json"
+            training_data_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Create training record
+            training_record = {
+                "timestamp": datetime.now().isoformat(),
+                "test_id": result.get("test_id"),
+                "category": result.get("category"),
+                "difficulty": result.get("difficulty"),
+                "question": result.get("question"),
+                "expected_answer": result.get("expected_answer"),
+                "actual_answer": result.get("actual_answer"),
+                "context": context,
+                "context_length": len("\n".join(context)) if context else 0,
+                "num_context_docs": len(context),
+                "deepeval_metrics": result.get("metrics", {}),
+                "ml_metrics": result.get("ml_metrics", {}),
+                "labels": {
+                    # Optional: User-provided ground truth labels (from YAML)
+                    "relevance": None,
+                    "hallucination": None,
+                    "faithfulness": None
+                }
+            }
+            
+            # Load existing training data or start fresh
+            if training_data_path.exists():
+                try:
+                    with open(training_data_path, 'r') as f:
+                        training_data = json.load(f)
+                except json.JSONDecodeError:
+                    training_data = []
+            else:
+                training_data = []
+            
+            # Append new record
+            training_data.append(training_record)
+            
+            # Write back
+            with open(training_data_path, 'w') as f:
+                json.dump(training_data, f, indent=2)
+            
+            logger.debug(f"Training data logged to {training_data_path}")
+        
+        except Exception as e:
+            logger.warning(f"Failed to log training data: {e}")
     
     @staticmethod
     def _check_llm_for_metrics():
@@ -454,6 +556,7 @@ class UIEvaluator:
     def get_results_summary(self) -> Dict[str, Any]:
         """
         Return raw metric statistics (no interpretation).
+        Includes both DeepEval and ML metrics.
         
         Returns:
             Summary dict with metric stats
@@ -463,12 +566,21 @@ class UIEvaluator:
 
         total = len(self.results)
         
-        # Collect scores by metric
+        # Collect scores by metric (DeepEval)
         metric_scores = {
             "Hallucination": [],
             "Faithfulness": [],
             "AnswerRelevancy": [],
             "ContextualRecall": []
+        }
+
+        # =========================================
+        # NEW: Collect ML metric scores
+        # =========================================
+        ml_metric_scores = {
+            "semantic_relevance": [],
+            "context_overlap": [],
+            "confidence_score": []
         }
 
         for result in self.results:
@@ -477,6 +589,14 @@ class UIEvaluator:
                 score = metrics.get(metric_name, {}).get("score")
                 if score is not None:
                     metric_scores[metric_name].append(score)
+            
+            # Collect ML metrics
+            ml_metrics = result.get("ml_metrics", {})
+            if ml_metrics and "error" not in ml_metrics:
+                for ml_metric_name in ml_metric_scores:
+                    score = ml_metrics.get(ml_metric_name)
+                    if score is not None:
+                        ml_metric_scores[ml_metric_name].append(score)
 
         # Compute statistics
         summary = {
@@ -494,6 +614,22 @@ class UIEvaluator:
                     "min": min(scores),
                     "max": max(scores)
                 }
+
+        # =========================================
+        # NEW: Add ML metrics statistics
+        # =========================================
+        if any(len(scores) > 0 for scores in ml_metric_scores.values()):
+            summary["ml_metrics_statistics"] = {}
+            for ml_metric_name, scores in ml_metric_scores.items():
+                if scores:
+                    import statistics
+                    summary["ml_metrics_statistics"][ml_metric_name] = {
+                        "count": len(scores),
+                        "mean": statistics.mean(scores),
+                        "stdev": statistics.stdev(scores) if len(scores) > 1 else 0.0,
+                        "min": min(scores),
+                        "max": max(scores)
+                    }
 
         logger.info(f"Summary: {total} tests evaluated")
         return summary

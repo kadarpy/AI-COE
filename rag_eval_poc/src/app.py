@@ -779,7 +779,7 @@ def display_single_test_evaluation():
             
             # Show metrics
             st.write("---")
-            st.write("**Metric Scores:**")
+            st.write("**DeepEval Metric Scores:**")
             
             cols = st.columns(2)
             metrics = result.get("metrics", {})
@@ -796,6 +796,43 @@ def display_single_test_evaluation():
                         )
                     else:
                         st.warning(f"{metric_name}: No score")
+            
+            # =========================================
+            # NEW: Display ML Evaluator Metrics
+            # =========================================
+            ml_metrics = result.get("ml_metrics", {})
+            if ml_metrics and "error" not in ml_metrics:
+                st.write("---")
+                st.write("**ML Evaluator Metrics (CrossEncoder):**")
+                st.info("Semantic relevance and context overlap scores computed with sentence-transformers", icon="🤖")
+                
+                ml_cols = st.columns(3)
+                
+                # Semantic Relevance
+                with ml_cols[0]:
+                    semantic_rel = ml_metrics.get("semantic_relevance", 0)
+                    display_metric_card(
+                        "Semantic Relevance",
+                        semantic_rel
+                    )
+                
+                # Context Overlap
+                with ml_cols[1]:
+                    context_ovlp = ml_metrics.get("context_overlap", 0)
+                    display_metric_card(
+                        "Context Overlap",
+                        context_ovlp
+                    )
+                
+                # Confidence Score
+                with ml_cols[2]:
+                    confidence = ml_metrics.get("confidence_score", 0)
+                    display_metric_card(
+                        "Confidence Score",
+                        confidence
+                    )
+            elif ml_metrics and "error" in ml_metrics:
+                st.warning(f"ML Metrics unavailable: {ml_metrics.get('error', 'Unknown error')}")
             
             # Show retrieved context
             st.write("---")
@@ -922,6 +959,22 @@ def display_evaluation_results():
             metric_name,
             score
         )
+
+    # =========================================
+    # NEW: Display ML Metrics Summary
+    # =========================================
+    ml_metrics_summary = summary.get("ml_metrics_statistics", {})
+    if ml_metrics_summary:
+        st.divider()
+        st.markdown("### ML Evaluator Metrics (CrossEncoder)")
+        st.info("Hybrid evaluation combining LLM judge (DeepEval) with deterministic ML scoring", icon="🤖")
+        
+        for metric_name, metric_stats in ml_metrics_summary.items():
+            score = metric_stats.get("mean", 0)
+            display_metric_card(
+                metric_name,
+                score
+            )
 
     st.divider()
 

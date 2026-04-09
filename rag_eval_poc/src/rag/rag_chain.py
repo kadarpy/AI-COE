@@ -162,12 +162,24 @@ Answer concisely based on the context provided."""
         answer = response.content if hasattr(response, 'content') else str(response)
         logger.info(f"Generated answer: {answer[:100]}")
 
-        return {
+        # =========================================
+        # STEP: Add metadata for ML evaluation (NEW)
+        # =========================================
+        output = {
             "result": answer,
             "source_documents": docs,
             "retrieval_count": len(docs),
-            "is_rag": True  # Proof this is TRUE RAG
+            "is_rag": True,  # Proof this is TRUE RAG
+            # NEW: Metadata for ML evaluation and training
+            "metadata": {
+                "context_length": len(context),  # Character count of combined context
+                "num_docs": len(docs),  # Number of retrieved documents
+                "generated_answer_length": len(answer),  # Length of generated answer
+                "retrieval_model": "mmr"  # Metadata about retrieval strategy
+            }
         }
+        
+        return output
 
 
 def build_rag_chain(vectordb):
