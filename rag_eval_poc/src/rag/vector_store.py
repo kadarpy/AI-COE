@@ -136,9 +136,27 @@ def build_vector_store(chunks):
             collection_name="rag_documents"
         )
 
-        # ADD THIS BLOCK (CRITICAL FIX)
-        logger.info("Adding documents to vector store...")
-        vectordb.add_documents(chunks)
+        # =========================================
+        # FIX: Check if DB already has documents
+        # =========================================
+        try:
+            existing_count = vectordb._collection.count()
+            logger.info(f"Vector store already contains {existing_count} documents")
+            
+            if existing_count == 0:
+                # DB is empty, add documents
+                logger.info("Adding documents to vector store...")
+                vectordb.add_documents(chunks)
+                logger.info(f"{len(chunks)} documents successfully stored in vector DB")
+            else:
+                # DB already populated, skip adding to prevent duplication
+                logger.warning(f"Vector store already populated with {existing_count} docs. Skipping document addition.")
+        except Exception as e:
+            # If count() fails, proceed with adding (fallback)
+            logger.warning(f"Could not check DB count: {e}. Proceeding with document addition...")
+            logger.info("Adding documents to vector store...")
+            vectordb.add_documents(chunks)
+            logger.info(f"{len(chunks)} documents successfully stored in vector DB")
 
         # Persist DB
         vectordb.persist()

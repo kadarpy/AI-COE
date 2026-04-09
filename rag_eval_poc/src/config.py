@@ -34,27 +34,27 @@ class Config:
     CONFIDENT_API_KEY = os.getenv("CONFIDENT_API_KEY", "")
     
     # Temperature for all providers
-    TEMPERATURE = float(os.getenv("TEMPERATURE"))
-    EVAL_TEMPERATURE = float(os.getenv("EVAL_TEMPERATURE"))
+    TEMPERATURE = float(os.getenv("TEMPERATURE", "0.0"))
+    EVAL_TEMPERATURE = float(os.getenv("EVAL_TEMPERATURE", "0.0"))
 
     # Document Loading Configuration
-    PDF_CHUNK_SIZE = int(os.getenv("PDF_CHUNK_SIZE"))
-    PDF_CHUNK_OVERLAP = int(os.getenv("PDF_CHUNK_OVERLAP"))
+    PDF_CHUNK_SIZE = int(os.getenv("PDF_CHUNK_SIZE", "500"))
+    PDF_CHUNK_OVERLAP = int(os.getenv("PDF_CHUNK_OVERLAP", "50"))
     ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md"}
 
     # Vector Store Configuration
-    VECTOR_STORE_TYPE = str(os.getenv("VECTOR_STORE_TYPE").lower())
-    RETRIEVER_K = int(os.getenv("RETRIEVER_K"))
+    VECTOR_STORE_TYPE = str(os.getenv("VECTOR_STORE_TYPE", "chroma").lower())
+    RETRIEVER_K = int(os.getenv("RETRIEVER_K", "3"))
 
     # Validation Configuration
-    MIN_QUESTION_LENGTH = int(os.getenv("MIN_QUESTION_LENGTH"))
-    MAX_QUESTION_LENGTH = int(os.getenv("MAX_QUESTION_LENGTH"))
-    MIN_ANSWER_LENGTH = int(os.getenv("MIN_ANSWER_LENGTH"))
-    MAX_ANSWER_LENGTH = int(os.getenv("MAX_ANSWER_LENGTH"))
+    MIN_QUESTION_LENGTH = int(os.getenv("MIN_QUESTION_LENGTH", "5"))
+    MAX_QUESTION_LENGTH = int(os.getenv("MAX_QUESTION_LENGTH", "500"))
+    MIN_ANSWER_LENGTH = int(os.getenv("MIN_ANSWER_LENGTH", "5"))
+    MAX_ANSWER_LENGTH = int(os.getenv("MAX_ANSWER_LENGTH", "2000"))
 
     # Retrieval tuning
-    RETRIEVER_FETCH_K = int(os.getenv("RETRIEVER_FETCH_K"))  # Number of documents to fetch before final selection
-    RERANK_TOP_K = int(os.getenv("RERANK_TOP_K"))  # Number of top documents to use for final context (strict mode)
+    RETRIEVER_FETCH_K = int(os.getenv("RETRIEVER_FETCH_K", "10"))  # Number of documents to fetch before final selection
+    RERANK_TOP_K = int(os.getenv("RERANK_TOP_K", "3"))  # Number of top documents to use for final context (strict mode)
 
     # Strict mode
     STRICT_CONTEXT_MODE = os.getenv("STRICT_CONTEXT_MODE")
