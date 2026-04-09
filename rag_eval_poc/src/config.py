@@ -31,6 +31,7 @@ class Config:
     # Groq Configuration (FREE - RECOMMENDED)
     API_KEY = os.getenv("API_KEY", "")
     LLM_MODEL = os.getenv("LLM_MODEL")
+    CONFIDENT_API_KEY = os.getenv("CONFIDENT_API_KEY", "")
     
     # Temperature for all providers
     TEMPERATURE = float(os.getenv("TEMPERATURE"))

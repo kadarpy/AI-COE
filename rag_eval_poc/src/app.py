@@ -352,14 +352,94 @@ def display_kpis():
 def sidebar_settings():
     st.sidebar.subheader("⚙️ Settings")
 
+    # =========================
+    # LLM CONFIG
+    # =========================
     with st.sidebar.expander("LLM Config"):
         temp = st.slider("Temperature", 0.0, 1.0, float(config.TEMPERATURE))
         k = st.slider("Retriever K", 1, 10, config.RETRIEVER_K)
         st.caption(f"Temp={temp}, K={k}")
 
+    # =========================
+    # CHUNK CONFIG
+    # =========================
     with st.sidebar.expander("Chunk Config"):
         chunk_size = st.number_input("Chunk Size", 200, 2000, config.PDF_CHUNK_SIZE)
         overlap = st.number_input("Overlap", 0, 500, config.PDF_CHUNK_OVERLAP)
+
+    # =========================
+    # CONTROL CENTER (NEW)
+    # =========================
+    with st.sidebar.expander("Control Center", expanded=True):
+
+        if st.session_state.bot_initialized:
+            st.success("System Online")
+        else:
+            st.warning("System Offline")
+
+            if st.button("Initialize AI", key="sidebar_init"):
+                if init_bot():
+                    st.rerun()
+
+        st.markdown("---")
+
+        st.subheader("Session Tools")
+
+        if st.button("Clear Conversation", key="sidebar_clear"):
+            st.session_state.conversation_history = []
+            st.rerun()
+
+        st.download_button(
+            label="Export Chat",
+            data=json.dumps({
+                "timestamp": datetime.now().isoformat(),
+                "messages": serialize_chat(st.session_state.conversation_history),
+                "stats": st.session_state.stats
+            }, indent=2),
+            file_name=f"rag_chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json"
+        )
+
+        if st.button("Reset Vector Database", key="sidebar_reset"):
+
+            db_path = Path("src/chroma_db")
+
+            try:
+                if "bot" in st.session_state:
+                    del st.session_state.bot
+
+                st.session_state.bot_initialized = False
+
+                gc.collect()
+                time.sleep(2)
+
+                import os
+
+                if db_path.exists():
+                    temp_path = db_path.parent / f"_delete_{int(time.time())}"
+
+                    os.rename(db_path, temp_path)
+
+                    for _ in range(6):
+                        try:
+                            shutil.rmtree(temp_path)
+                            break
+                        except:
+                            time.sleep(1)
+
+                initialize_session()
+
+                st.success("Vector DB reset successfully")
+                st.rerun()
+
+            except Exception as e:
+                st.error(f"Failed to reset database: {str(e)}")
+
+        st.markdown("---")
+
+        st.subheader("System Info")
+        st.write("Model: Groq LLM")
+        st.write(f"Vector DB: {config.VECTOR_STORE_TYPE}")
 
 # =========================================================
 # BOT INITIALIZATION
@@ -686,8 +766,11 @@ def display_single_test_evaluation():
         return
     
     # Select test case
-    test_ids = [f"Q#{tc['id']}: {tc['question'][:50]}..." 
-                for tc in st.session_state.evaluation_test_cases]
+    test_ids = [
+                f"[{tc['category'].upper()} | {tc['difficulty'].upper()}] "
+                f"Q#{tc['id']}: {tc['question'][:50]}..."
+                for tc in st.session_state.evaluation_test_cases
+                ]
     selected_idx = st.selectbox("Select Test Case", range(len(test_ids)), 
                                 format_func=lambda i: test_ids[i])
     
@@ -1297,104 +1380,6 @@ def main():
 
         with col_side:
 
-            st.title("Control Center")
-
-            st.write("---")
-
-            if st.session_state.bot_initialized:
-
-                st.success("System Online")
-
-            else:
-
-                st.warning("System Offline")
-
-                if st.button("Initialize AI"):
-
-                    if init_bot():
-                        st.rerun()
-
-            st.write("---")
-
-            st.subheader("Session Tools")
-
-            if st.button("Clear Conversation"):
-                st.session_state.conversation_history = []
-                st.rerun()
-
-            st.download_button(
-                label="Export Chat",
-                data=json.dumps({
-                    "timestamp": datetime.now().isoformat(),
-                    "messages": serialize_chat(st.session_state.conversation_history),
-                    "stats": st.session_state.stats
-                }, indent=2),
-                file_name=f"rag_chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                mime="application/json"
-            )
-
-            if st.button("Reset Vector Database"):
-
-                db_path = Path("src/chroma_db")
-
-                try:
-                    # =========================
-                    # 1. DESTROY BOT REFERENCE
-                    # =========================
-                    if "bot" in st.session_state:
-                        try:
-                            del st.session_state.bot
-                        except:
-                            pass
-
-                    st.session_state.bot_initialized = False
-
-                    # =========================
-                    # 2. FORCE MEMORY CLEANUP
-                    # =========================
-                    gc.collect()
-                    time.sleep(2)
-
-                    # =========================
-                    # 3. WINDOWS-SAFE DELETE
-                    # =========================
-                    import os
-
-                    if db_path.exists():
-                        temp_path = db_path.parent / f"_delete_{int(time.time())}"
-
-                        try:
-                            # rename first (bypasses lock)
-                            os.rename(db_path, temp_path)
-
-                            # then delete with retry
-                            for i in range(6):
-                                try:
-                                    shutil.rmtree(temp_path)
-                                    break
-                                except Exception:
-                                    time.sleep(1)
-
-                        except Exception as e:
-                            st.warning(f"Rename fallback failed: {e}")
-
-                    # =========================
-                    # 4. RE-INIT SESSION SAFELY
-                    # =========================
-                    initialize_session()
-
-                    st.success(" Vector database reset successfully")
-                    st.rerun()
-
-                except Exception as e:
-                    st.error(f"Failed to reset database: {str(e)}")
-
-            st.write("---")
-
-            st.subheader("System Info")
-
-            st.write("Model: Groq LLM")
-            st.write(f"Vector DB: {config.VECTOR_STORE_TYPE}")
             sidebar_settings()
         # -----------------------------------------------------
 
