@@ -16,51 +16,86 @@ def get_llm():
     
     Returns:
         LLM instance for the configured provider
+        
+    Raises:
+        ValueError: If provider is not configured or credentials are missing
     """
     provider = config.LLM_PROVIDER.lower()
     
-    if provider == "openai":
-        logger.debug("Using OpenAI LLM")
-        from langchain_openai import ChatOpenAI
-        return ChatOpenAI(
-            model=config.OPENAI_MODEL,
-            temperature=config.TEMPERATURE,
-            api_key=config.OPENAI_API_KEY,
-            max_retries=3
-        )
-    
-    elif provider == "groq":
-        logger.debug("Using Groq LLM")
-        from langchain_groq import ChatGroq
-        return ChatGroq(
-            model=config.LLM_MODEL,
-            temperature=config.TEMPERATURE,
-            api_key=config.API_KEY,
-            max_retries=3
-        )
-    
-    elif provider == "ollama":
-        logger.debug("Using Ollama LLM")
-        from langchain_community.chat_models import ChatOllama
-        return ChatOllama(
-            model=config.OLLAMA_MODEL,
-            base_url=config.OLLAMA_BASE_URL,
-            temperature=config.TEMPERATURE,
-            top_p=0.9
-        )
-    elif provider == "deepseek":
-        logger.debug("Using Deepseek LLM")
-        from langchain_deepseek import ChatDeepSeek
-        return ChatDeepSeek(
-            model=config.LLM_MODEL,
-            temperature=config.TEMPERATURE,
-            api_key=config.API_KEY,
-            max_retries=3
-        )
-    
-    else:
-        logger.error(f"Unknown provider: {provider}")
-        raise ValueError(f"Unknown LLM provider: {provider}")
+    try:
+        if provider == "openai":
+            logger.debug("Using OpenAI LLM")
+            from langchain_openai import ChatOpenAI
+            
+            if not config.OPENAI_API_KEY:
+                raise ValueError("OPENAI_API_KEY not configured. Set OPENAI_API_KEY in .env or environment")
+            if not config.OPENAI_MODEL:
+                raise ValueError("OPENAI_MODEL not configured. Set OPENAI_MODEL in .env or environment")
+                
+            return ChatOpenAI(
+                model=config.OPENAI_MODEL,
+                temperature=config.TEMPERATURE,
+                api_key=config.OPENAI_API_KEY,
+                max_retries=3
+            )
+        
+        elif provider == "groq":
+            logger.debug("Using Groq LLM")
+            from langchain_groq import ChatGroq
+            
+            if not config.API_KEY:
+                raise ValueError("API_KEY not configured for Groq. Set API_KEY in .env or environment")
+            if not config.LLM_MODEL:
+                raise ValueError("LLM_MODEL not configured for Groq. Set LLM_MODEL in .env or environment")
+                
+            return ChatGroq(
+                model=config.LLM_MODEL,
+                temperature=config.TEMPERATURE,
+                api_key=config.API_KEY,
+                max_retries=3
+            )
+        
+        elif provider == "ollama":
+            logger.debug("Using Ollama LLM")
+            from langchain_community.chat_models import ChatOllama
+            
+            if not config.OLLAMA_BASE_URL:
+                raise ValueError("OLLAMA_BASE_URL not configured. Set OLLAMA_BASE_URL in .env or environment")
+            if not config.OLLAMA_MODEL:
+                raise ValueError("OLLAMA_MODEL not configured. Set OLLAMA_MODEL in .env or environment")
+                
+            return ChatOllama(
+                model=config.OLLAMA_MODEL,
+                base_url=config.OLLAMA_BASE_URL,
+                temperature=config.TEMPERATURE,
+                top_p=0.9
+            )
+            
+        elif provider == "deepseek":
+            logger.debug("Using Deepseek LLM")
+            from langchain_deepseek import ChatDeepSeek
+            
+            if not config.DEEPSEEK_API_KEY:
+                raise ValueError("DEEPSEEK_API_KEY not configured. Set DEEPSEEK_API_KEY in .env or environment")
+            if not config.DEEPSEEK_MODEL:
+                raise ValueError("DEEPSEEK_MODEL not configured. Set DEEPSEEK_MODEL in .env or environment")
+                
+            return ChatDeepSeek(
+                model=config.DEEPSEEK_MODEL,
+                temperature=config.TEMPERATURE,
+                api_key=config.DEEPSEEK_API_KEY,
+                max_retries=3
+            )
+        
+        else:
+            raise ValueError(f"Unsupported LLM provider: {provider}. Supported: groq, openai, ollama, deepseek")
+            
+    except ImportError as e:
+        logger.error(f"Failed to import LLM module for provider '{provider}': {e}")
+        raise ValueError(f"LLM provider '{provider}' is not installed. Install required dependencies.")
+    except Exception as e:
+        logger.error(f"Error initializing LLM with provider '{provider}': {e}")
+        raise
 
 
 class RAGChain:

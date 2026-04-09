@@ -11,25 +11,31 @@ logger = logging.getLogger(__name__)
 
 def get_embeddings():
     """
-    Get embeddings using HuggingFace sentence-transformers (384 dims)
-    Falls back to TF-IDF if sentence-transformers unavailable
+    Get embeddings using configured model.
+    Falls back gracefully if primary model unavailable.
     
     Returns:
         Embeddings instance
+        
+    Raises:
+        ValueError: If all embedding options fail
     """
+    embeddings_model = config.ML_EMBEDDINGS_MODEL or "BAAI/bge-base-en-v1.5"
+    
     try:
         # Try to use HuggingFace sentence-transformers (recommended, 384 dims)
         from langchain_huggingface import HuggingFaceEmbeddings
         
-        logger.info("Using HuggingFace sentence-transformers embeddings (384 dimensions)")
+        logger.info(f"Using HuggingFace sentence-transformers embeddings: {embeddings_model}")
         embeddings = HuggingFaceEmbeddings(
-            model_name="BAAI/bge-base-en-v1.5",  # 384 dimensional embeddings
+            model_name=embeddings_model,
             model_kwargs={"device": "cpu"}
         )
+        logger.info("HuggingFace embeddings initialized successfully")
         return embeddings
         
     except Exception as e:
-        logger.warning(f"HuggingFace embeddings failed: {str(e)}")
+        logger.warning(f"HuggingFace embeddings failed for '{embeddings_model}': {str(e)}")
         logger.info("Falling back to TF-IDF embeddings")
         
         from sklearn.feature_extraction.text import TfidfVectorizer

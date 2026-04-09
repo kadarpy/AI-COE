@@ -29,21 +29,30 @@ class MLEvaluator:
     Provides deterministic ML scoring to complement DeepEval's LLM-based scoring.
     """
 
-    def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"):
+    def __init__(self, model_name: str = None):
         """
         Initialize ML evaluator with CrossEncoder model.
         
         Args:
-            model_name: HuggingFace model identifier for CrossEncoder
+            model_name: HuggingFace model identifier for CrossEncoder.
+                       If not provided, uses config.ML_EVALUATOR_MODEL
+        
+        Raises:
+            ValueError: If model initialization fails
         """
+        # Use provided model or fallback to config, then to default
+        if model_name is None:
+            from config import config
+            model_name = config.ML_EVALUATOR_MODEL or "cross-encoder/ms-marco-MiniLM-L-6-v2"
+        
         logger.info(f"Initializing MLEvaluator with model: {model_name}")
         try:
             self.model = CrossEncoder(model_name)
             self.model_name = model_name
-            logger.info("ML Evaluator initialized successfully")
+            logger.info(f"ML Evaluator initialized successfully with '{model_name}'")
         except Exception as e:
-            logger.error(f"Failed to initialize CrossEncoder: {e}")
-            raise
+            logger.error(f"Failed to initialize CrossEncoder with '{model_name}': {e}")
+            raise ValueError(f"Failed to load ML model '{model_name}'. Ensure it's a valid HuggingFace model: {e}")
 
     def _tokenize(self, text: str) -> set:
         """
@@ -246,19 +255,51 @@ class MLEvaluator:
             }
 
 
-# Singleton instance for lazy loading (optional optimization)
+# Singleton instance for lazy loading with configuration tracking
 _ml_evaluator_instance: Optional[MLEvaluator] = None
+_last_model_name: Optional[str] = None
 
 
-def get_ml_evaluator() -> MLEvaluator:
+def get_ml_evaluator(force_reload: bool = False) -> MLEvaluator:
     """
     Get or create singleton instance of MLEvaluator.
-    This ensures the model is loaded only once.
+    This ensures the model is loaded only once, but reloads if configuration changes.
+    
+    Args:
+        force_reload: If True, reload evaluator even if already initialized.
+                     Useful when configuration has changed.
     
     Returns:
         MLEvaluator instance
+        
+    Raises:
+        ValueError: If model initialization fails
     """
-    global _ml_evaluator_instance
-    if _ml_evaluator_instance is None:
-        _ml_evaluator_instance = MLEvaluator()
-    return _ml_evaluator_instance
+    global _ml_evaluator_instance, _last_model_name
+    
+    try:
+        from config import config
+        current_model_name = config.ML_EVALUATOR_MODEL or "cross-encoder/ms-marco-MiniLM-L-6-v2"
+        
+        # Check if we need to reload due to configuration change
+        if force_reload or _ml_evaluator_instance is None or _last_model_name != current_model_name:
+            logger.info(f"Initializing ML Evaluator with model: {current_model_name}")
+            _ml_evaluator_instance = MLEvaluator(model_name=current_model_name)
+            _last_model_name = current_model_name
+        
+        return _ml_evaluator_instance
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize ML Evaluator: {e}")
+        raise ValueError(f"ML Evaluator initialization failed. Ensure the model is available: {e}")
+
+
+def reset_ml_evaluator() -> None:
+    """
+    Reset ML evaluator instance (useful when configuration changes).
+    Next call to get_ml_evaluator() will reinitialize with new configuration.
+    """
+    global _ml_evaluator_instance, _last_model_name
+    _ml_evaluator_instance = None
+    _last_model_name = None
+    logger.info("ML Evaluator instance reset")

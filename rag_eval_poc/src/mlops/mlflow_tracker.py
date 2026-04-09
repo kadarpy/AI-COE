@@ -186,8 +186,31 @@ def get_mlflow_tracker(tracking_uri: str = None) -> MLflowTracker:
         
     Returns:
         MLflowTracker instance
+        
+    Raises:
+        Exception: If tracker initialization fails
     """
     global _tracker_instance
-    if _tracker_instance is None:
-        _tracker_instance = MLflowTracker(tracking_uri=tracking_uri)
-    return _tracker_instance
+    try:
+        if _tracker_instance is None:
+            _tracker_instance = MLflowTracker(tracking_uri=tracking_uri)
+        return _tracker_instance
+    except Exception as e:
+        logger.error(f"Failed to initialize MLflow tracker: {e}")
+        raise
+
+
+def reset_mlflow_tracker() -> None:
+    """
+    Reset MLflow tracker instance (useful when configuration changes).
+    Next call to get_mlflow_tracker() will reinitialize with new configuration.
+    """
+    global _tracker_instance
+    try:
+        if _tracker_instance and mlflow.active_run():
+            _tracker_instance.end_run()
+    except Exception as e:
+        logger.warning(f"Error ending active run during reset: {e}")
+    
+    _tracker_instance = None
+    logger.info("MLflow tracker instance reset")

@@ -19,6 +19,57 @@ from evaluation import UIEvaluator, TestCaseManager
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# =========================================================
+# CONFIGURATION VALIDATION
+# =========================================================
+
+def validate_configuration():
+    """
+    Validate RAG system configuration at startup.
+    This ensures all required settings are present before initialization.
+    
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    try:
+        config.validate()
+        logger.info("Configuration validated successfully")
+        return True, ""
+    except ValueError as e:
+        error_msg = f"Configuration Error: {str(e)}"
+        logger.error(error_msg)
+        return False, error_msg
+    except Exception as e:
+        error_msg = f"Unexpected configuration error: {str(e)}"
+        logger.error(error_msg)
+        return False, error_msg
+
+
+def display_configuration_error(error_msg: str):
+    """Display configuration error in Streamlit UI"""
+    st.error(f"⚠️ Configuration Error")
+    st.error(error_msg)
+    st.markdown("### How to Fix:")
+    st.markdown("1. Check your `.env` file in the `config/` directory")
+    st.markdown(f"2. Ensure you have set the following for your provider ({config.LLM_PROVIDER.upper()}):")
+    
+    provider = config.LLM_PROVIDER.lower()
+    if provider == "groq":
+        st.markdown("   - `API_KEY`: Your Groq API key")
+        st.markdown("   - `LLM_MODEL`: Model name (e.g., mixtral-8x7b-32768)")
+    elif provider == "openai":
+        st.markdown("   - `OPENAI_API_KEY`: Your OpenAI API key")
+        st.markdown("   - `OPENAI_MODEL`: Model name (e.g., gpt-4-turbo)")
+    elif provider == "ollama":
+        st.markdown("   - `OLLAMA_BASE_URL`: Ollama server URL (e.g., http://localhost:11434)")
+        st.markdown("   - `OLLAMA_MODEL`: Model name")
+    elif provider == "deepseek":
+        st.markdown("   - `DEEPSEEK_API_KEY`: Your Deepseek API key")
+        st.markdown("   - `DEEPSEEK_MODEL`: Model name")
+    
+    st.markdown("3. Restart the application")
+    st.stop()
+
 st.set_page_config(
     page_title="RAG Intelligence Platform",
     page_icon="",
@@ -454,7 +505,10 @@ def sidebar_settings():
         st.markdown("---")
 
         st.subheader("System Info")
-        st.write("Model: Groq LLM")
+        provider_info = config.LLM_PROVIDER.upper()
+        model_info = getattr(config, f'{provider_info}_MODEL', 'Unknown') if provider_info != 'GROQ' else config.LLM_MODEL
+        st.write(f"LLM Provider: {provider_info}")
+        st.write(f"Model: {model_info}")
         st.write(f"Vector DB: {config.VECTOR_STORE_TYPE}")
 
 # =========================================================
@@ -466,7 +520,7 @@ def init_bot():
     try:
         with st.spinner("Initializing RAG System..."):
 
-            bot = RAGBotDemo(pdf_path="src/data/documents/document.txt")
+            bot = RAGBotDemo(pdf_path=str(config.DEFAULT_DOCUMENT_PATH))
 
             if bot.setup():
                 st.session_state.bot = bot
@@ -1285,6 +1339,12 @@ def display_metrics_dashboard():
 # =========================================================
 
 def main():
+    
+    # Validate configuration first
+    is_valid, error_msg = validate_configuration()
+    if not is_valid:
+        display_configuration_error(error_msg)
+        return
 
     apply_professional_styling()
 

@@ -33,15 +33,21 @@ import os
 
 from dotenv import load_dotenv
 
-os.environ["CONFIDENT_METRIC_LOGGING_VERBOSE"] = "0"
-os.environ["CONFIDENT_DISABLE_TELEMETRY"] = "1"
-os.environ["CONFIDENT_API_KEY"] = "dummy_key"
-
+# Load environment variables FIRST, before any package imports
 config_path = Path(__file__).parent.parent / "config" / ".env"
 if config_path.exists():
     load_dotenv(config_path, override=True)
 else:
     load_dotenv(override=True)
+
+# DO NOT set dummy values for environment variables - let packages handle missing credentials gracefully
+# Remove: os.environ["CONFIDENT_METRIC_LOGGING_VERBOSE"] = "0"
+# Remove: os.environ["CONFIDENT_DISABLE_TELEMETRY"] = "1"
+# Remove: os.environ["CONFIDENT_API_KEY"] = "dummy_key"
+
+# Configure DeepEval to be quiet (suppress logging from external packages)
+os.environ["CONFIDENT_METRIC_LOGGING_VERBOSE"] = "0"
+os.environ["CONFIDENT_DISABLE_TELEMETRY"] = "1"
 
 from deepeval.test_case import LLMTestCase
 from deepeval.metrics import (
@@ -115,18 +121,39 @@ class GroqDeepEvalLLM(DeepEvalBaseLLM):
 # =========================
 
 def get_deepeval_llm():
+    """
+    Get LLM instance for DeepEval metrics evaluation.
+    
+    Returns:
+        LLM instance for DeepEval
+        
+    Raises:
+        ValueError: If LLM provider is not properly configured
+    """
     from config import config
     import os
 
-    api_key = config.API_KEY or os.getenv("API_KEY")
+    provider = config.LLM_PROVIDER.lower()
+    
+    # Handle Groq provider (most common)
+    if provider == "groq":
+        api_key = config.API_KEY or os.getenv("API_KEY")
+        model = config.LLM_MODEL or os.getenv("LLM_MODEL")
+        
+        if not api_key:
+            raise ValueError("API_KEY not configured for Groq provider. Set API_KEY in .env or environment variable")
+        if not model:
+            raise ValueError("LLM_MODEL not configured for Groq provider. Set LLM_MODEL in .env or environment variable")
+        
+        logger.info(f"Initializing DeepEval LLM with Groq provider (model: {model})")
+        return GroqDeepEvalLLM(api_key=api_key, model_name=model)
+    
+    # Handle other providers - they would need their own adapter classes
+    # For now, only Groq is fully supported for DeepEval
+    else:
+        raise ValueError(f"DeepEval LLM evaluation currently only supports 'groq' provider. "
+                        f"Set LLM_PROVIDER=groq in .env. Current provider: {provider}")
 
-    if not api_key:
-        raise ValueError("API_KEY missing")
-
-    return GroqDeepEvalLLM(
-        api_key=api_key,
-        model_name=config.LLM_MODEL
-    )
 
 def evaluate_test_case(
     test_id: str,

@@ -30,12 +30,30 @@ class Config:
     
     # Groq Configuration (FREE - RECOMMENDED)
     API_KEY = os.getenv("API_KEY", "")
-    LLM_MODEL = os.getenv("LLM_MODEL")
+    LLM_MODEL = os.getenv("LLM_MODEL", "mixtral-8x7b-32768")  # Default Groq model
+    
+    # OpenAI Configuration
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4-turbo")
+    
+    # Ollama Configuration
+    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
+    
+    # Deepseek Configuration
+    DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+    DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+    
+    # Confident Configuration (optional)
     CONFIDENT_API_KEY = os.getenv("CONFIDENT_API_KEY", "")
     
     # Temperature for all providers
     TEMPERATURE = float(os.getenv("TEMPERATURE", "0.0"))
     EVAL_TEMPERATURE = float(os.getenv("EVAL_TEMPERATURE", "0.0"))
+
+    # ML Model Configuration
+    ML_EMBEDDINGS_MODEL = os.getenv("ML_EMBEDDINGS_MODEL", "BAAI/bge-base-en-v1.5")
+    ML_EVALUATOR_MODEL = os.getenv("ML_EVALUATOR_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
 
     # Document Loading Configuration
     PDF_CHUNK_SIZE = int(os.getenv("PDF_CHUNK_SIZE", "500"))
@@ -88,24 +106,38 @@ class Config:
     @staticmethod
     def validate():
         """Validate configuration"""
-        provider = Config.LLM_PROVIDER
+        provider = Config.LLM_PROVIDER.lower()
         
-        # Validate based on selected provide
+        # Validate based on selected provider
         if provider == "groq":
             if not Config.API_KEY:
-                raise ValueError("API_KEY is required for Groq provider")
+                raise ValueError("API_KEY is required for Groq provider. Set API_KEY in .env or environment")
             if not Config.LLM_MODEL:
-                raise ValueError("LLM_MODEL is required for Groq provider")
+                raise ValueError("LLM_MODEL is required for Groq provider. Set LLM_MODEL in .env or environment")
+                
+        elif provider == "openai":
+            if not Config.OPENAI_API_KEY:
+                raise ValueError("OPENAI_API_KEY is required for OpenAI provider. Set OPENAI_API_KEY in .env or environment")
+            if not Config.OPENAI_MODEL:
+                raise ValueError("OPENAI_MODEL is required for OpenAI provider. Set OPENAI_MODEL in .env or environment")
+                
+        elif provider == "ollama":
+            if not Config.OLLAMA_BASE_URL:
+                raise ValueError("OLLAMA_BASE_URL is required for Ollama provider. Set OLLAMA_BASE_URL in .env or environment")
+            if not Config.OLLAMA_MODEL:
+                raise ValueError("OLLAMA_MODEL is required for Ollama provider. Set OLLAMA_MODEL in .env or environment")
+                
+        elif provider == "deepseek":
+            if not Config.DEEPSEEK_API_KEY:
+                raise ValueError("DEEPSEEK_API_KEY is required for Deepseek provider. Set DEEPSEEK_API_KEY in .env or environment")
+            if not Config.DEEPSEEK_MODEL:
+                raise ValueError("DEEPSEEK_MODEL is required for Deepseek provider. Set DEEPSEEK_MODEL in .env or environment")
+        
         elif provider == "confident":
             if not Config.CONFIDENT_API_KEY:
-                raise ValueError("CONFIDENT_API_KEY is required for Confident provider")
-        elif provider == "deepseek":
-            if not Config.API_KEY:
-                raise ValueError("API_KEY is required for Deepseek provider")
-            if not Config.LLM_MODEL:
-                raise ValueError("LLM_MODEL is required for Deepseek provider") 
+                raise ValueError("CONFIDENT_API_KEY is required for Confident provider. Set CONFIDENT_API_KEY in .env or environment")
         else:
-            raise ValueError(f"Unsupported LLM_PROVIDER: {provider}")
+            raise ValueError(f"Unsupported LLM_PROVIDER: {provider}. Supported: groq, openai, ollama, deepseek, confident")
 
         # Create required directories
         Config.DATA_DIR.mkdir(parents=True, exist_ok=True)

@@ -5,6 +5,7 @@ langchain_community>=0.1.0
 langchain-text-splitters>=0.1.0
 langchain-groq>=0.1.0
 langchain-huggingface>=0.0.1
+langchain-deepseek>=0.1.0
 chromadb
 deepeval
 pypdf
