@@ -144,20 +144,21 @@ def build_vector_store(chunks):
 
         # =========================================
         # FIX: Check if DB already has documents
-        # uses safe wrapper for internal API access
+        # Uses safe method instead of private API
         # =========================================
         try:
-            # Safely access collection count
+            # Safely check if DB has documents using public API
             has_documents = False
-            if hasattr(vectordb, '_collection'):
-                try:
-                    existing_count = vectordb._collection.count()
-                    has_documents = existing_count > 0
-                    if has_documents:
-                        logger.info(f"Vector store already contains {existing_count} documents")
-                except Exception as e:
-                    logger.debug(f"Could not determine collection count: {e}, attempting fresh add")
-                    has_documents = False
+            try:
+                # Use public API: get() returns dict with 'ids' key
+                result = vectordb.get()
+                existing_count = len(result.get("ids", [])) if result else 0
+                has_documents = existing_count > 0
+                if has_documents:
+                    logger.info(f"Vector store already contains {existing_count} documents")
+            except Exception as e:
+                logger.debug(f"Could not determine collection count: {e}, attempting fresh add")
+                has_documents = False
             
             if not has_documents:
                 # DB is empty or cannot determine, add documents

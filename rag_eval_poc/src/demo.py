@@ -55,12 +55,16 @@ class RAGBotDemo:
             config.validate()
             logger.info("Configuration validated successfully")
 
-            # Check if vector store exists
+            # Check if vector store exists and has documents
             if config.CHROMA_DB_DIR.exists():
                 try:
                     self.vectordb = load_vector_store()
 
-                    if self.vectordb._collection.count() == 0:
+                    # Use public API instead of private _collection
+                    db_contents = self.vectordb.get()
+                    existing_count = len(db_contents.get("ids", [])) if db_contents else 0
+                    
+                    if existing_count == 0:
                         logger.warning("Empty vector DB detected → rebuilding")
                         raise ValueError("Empty DB")
 

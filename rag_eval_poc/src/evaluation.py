@@ -30,8 +30,16 @@ import streamlit as st
 import re
 import yaml
 import os
+from functools import lru_cache
 
 from dotenv import load_dotenv
+
+# Initialize logger BEFORE any package imports or usage
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 # Load environment variables FIRST, before any package imports
 config_path = Path(__file__).parent.parent / "config" / ".env"
@@ -83,12 +91,6 @@ try:
 except ImportError:
     logger.warning("Retrieval metrics module not available.")
     RETRIEVAL_METRICS_AVAILABLE = False
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 
 from deepeval.models.base_model import DeepEvalBaseLLM
 from groq import Groq
@@ -387,6 +389,9 @@ class UIEvaluator:
     Collects training data for future model improvements.
     Tracks both successful evaluations and ML failures.
     """
+    
+    # Memory management: cap results to prevent unbounded growth
+    MAX_CACHED_RESULTS = 1000
 
     def __init__(self, qa_chain):
         """
@@ -631,24 +636,32 @@ class UIEvaluator:
         # =========================================
         self._log_training_data(output, retrieval_context, labels)
 
+        # Add result with memory management (cap at MAX_CACHED_RESULTS)
         self.results.append(output)
+        if len(self.results) > self.MAX_CACHED_RESULTS:
+            # Remove oldest result to prevent unbounded memory growth
+            self.results.pop(0)
+            logger.debug(f"Results cache pruned to {self.MAX_CACHED_RESULTS} entries")
+        
         logger.info(f"Test {test_id} complete")
         
         return output
 
     def _log_training_data(self, result: Dict[str, Any], context: List[str], labels: Dict[str, Any] = None) -> None:
         """
-        Log evaluation results for future model training.
+        Log evaluation results for future model training (thread-safe).
         
         Saves structured data to training_data.jsonl (JSONL format).
         Uses append mode for scalability - each record is a single JSON line.
-        This data can be used to train or fine-tune evaluation models.
+        Thread-safe using a lock file to prevent concurrent write corruption.
         
         Args:
             result: Evaluation result dict
             context: Retrieved context strings
             labels: Optional ground truth labels from test case
         """
+        import fcntl
+        
         try:
             training_data_path = Path(config.TRAINING_DATA_PATH)
             training_data_path.parent.mkdir(parents=True, exist_ok=True)
@@ -675,15 +688,27 @@ class UIEvaluator:
                 }
             }
             
-            # Append new record as JSONL (one JSON object per line)
-            # This is much more scalable than loading/rewriting entire JSON file
-            with open(training_data_path, 'a') as f:
-                f.write(json.dumps(training_record) + "\n")
+            # Thread-safe append: use file locking to prevent concurrent write corruption
+            # On Windows, fcntl may not work - use try/except fallback
+            try:
+                with open(training_data_path, 'a') as f:
+                    # Try to acquire exclusive lock (Unix-like systems)
+                    try:
+                        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                        f.write(json.dumps(training_record) + "\n")
+                        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                    except (AttributeError, OSError):
+                        # Windows or system without fcntl - just write (Streamlit mostly single-threaded)
+                        f.write(json.dumps(training_record) + "\n")
+            except Exception as write_err:
+                logger.error(f"Failed to write to training data file: {write_err}")
+                raise
             
             logger.debug(f"Training data (JSONL) appended to {training_data_path}")
         
         except Exception as e:
             logger.warning(f"Failed to log training data: {e}")
+
     
     @staticmethod
     def _check_llm_for_metrics():
@@ -748,10 +773,14 @@ class UIEvaluator:
                     progress_callback(i, len(test_cases))
             except Exception as e:
                 logger.error(f"Test {i} failed: {e}")
-                self.results.append({
+                error_result = {
                     "test_id": test_case.get("id", i),
                     "error": str(e)
-                })
+                }
+                self.results.append(error_result)
+                # Add memory management for error results too
+                if len(self.results) > self.MAX_CACHED_RESULTS:
+                    self.results.pop(0)
         
         # Log metrics to MLflow
         if self.mlflow_tracker and mlflow_run_id:

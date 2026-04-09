@@ -406,14 +406,45 @@ Answer concisely based on the context provided."""
         """
         query = input_dict.get("query", "")
         
+        if not query or not isinstance(query, str):
+            logger.error(f"Invalid query: expected non-empty string, got {type(query)}")
+            return {
+                "result": "Error: Invalid query provided",
+                "source_documents": [],
+                "retrieval_count": 0,
+                "is_rag": True,
+                "error": "Invalid query type"
+            }
+        
         # NOTE: Query rewriting removed for evaluation integrity
         # Do NOT mutate queries - they should be evaluated as-is
         logger.info(f"RAGChain.invoke called with query: {query[:100]}")
 
         # STEP 1: MANDATORY RETRIEVAL (this is what makes it RAG, not LLM)
         logger.debug("STEP 1: Retrieving documents from vector store...")
-        docs = self.retriever.invoke(query)
-        logger.info(f"Retrieved {len(docs)} documents from vector store")
+        try:
+            docs = self.retriever.invoke(query)
+            
+            # Defensive check: ensure docs is a list
+            if docs is None:
+                logger.error(f"Retriever returned None for query: {query[:100]}")
+                raise RuntimeError("Retriever failure: returned None (likely embedding failure)")
+            
+            if not isinstance(docs, list):
+                logger.error(f"Retriever returned unexpected type {type(docs)}, expected list")
+                raise RuntimeError(f"Retriever returned unexpected type: {type(docs)}")
+            
+            logger.info(f"Retrieved {len(docs)} documents from vector store")
+            
+        except Exception as retrieval_error:
+            logger.error(f"Retrieval failed: {retrieval_error}")
+            return {
+                "result": f"Error during document retrieval: {str(retrieval_error)[:100]}",
+                "source_documents": [],
+                "retrieval_count": 0,
+                "is_rag": True,
+                "error": str(retrieval_error)
+            }
         
         # STEP 1.5: OPTIONAL RERANKING (NEW - Self-Improving RAG)
         if config.ENABLE_RERANKING and docs:

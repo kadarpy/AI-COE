@@ -22,6 +22,9 @@ import re
 
 logger = logging.getLogger(__name__)
 
+# Global instance for singleton pattern
+_ml_evaluator = None
+
 
 class MLEvaluator:
     """
@@ -40,16 +43,25 @@ class MLEvaluator:
         Raises:
             ValueError: If model initialization fails
         """
+        import torch
+        
         # Use provided model or fallback to config, then to default
         if model_name is None:
             from config import config
             model_name = config.ML_EVALUATOR_MODEL or "cross-encoder/ms-marco-MiniLM-L-6-v2"
         
-        logger.info(f"Initializing MLEvaluator with model: {model_name}")
+        # Detect device: CUDA if available, else CPU
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        
+        logger.info(f"Initializing MLEvaluator with model: {model_name} on device: {device}")
         try:
-            self.model = CrossEncoder(model_name)
+            self.model = CrossEncoder(model_name, device=device)
             self.model_name = model_name
-            logger.info(f"ML Evaluator initialized successfully with '{model_name}'")
+            self.device = device
+            logger.info(f"ML Evaluator initialized successfully with '{model_name}' on {device}")
+        except Exception as e:
+            logger.error(f"Failed to initialize CrossEncoder with '{model_name}': {e}")
+            raise ValueError(f"Failed to load ML model '{model_name}'. Ensure it's a valid HuggingFace model: {e}")
         except Exception as e:
             logger.error(f"Failed to initialize CrossEncoder with '{model_name}': {e}")
             raise ValueError(f"Failed to load ML model '{model_name}'. Ensure it's a valid HuggingFace model: {e}")
