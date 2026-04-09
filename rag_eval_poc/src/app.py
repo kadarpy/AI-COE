@@ -271,33 +271,33 @@ def initialize_session():
     # =========================
     # EVALUATION PROFILES (GLOBAL)
     # =========================
-    if "eval_profiles" not in st.session_state:
-        st.session_state.eval_profiles = {
-            "poc": {
-                "faithfulness": 0.70,
-                "relevancy": 0.75,
-                "recall": 0.70,
-                "hallucination": 0.25
-            },
-            "strong": {
-                "faithfulness": 0.85,
-                "relevancy": 0.85,
-                "recall": 0.80,
-                "hallucination": 0.15
-            },
-            "production": {
-                "faithfulness": 0.90,
-                "relevancy": 0.90,
-                "recall": 0.90,
-                "hallucination": 0.05
-            }
-        }
+    # if "eval_profiles" not in st.session_state:
+    #     st.session_state.eval_profiles = {
+    #         "poc": {
+    #             "faithfulness": 0.70,
+    #             "relevancy": 0.75,
+    #             "recall": 0.70,
+    #             "hallucination": 0.25
+    #         },
+    #         "strong": {
+    #             "faithfulness": 0.85,
+    #             "relevancy": 0.85,
+    #             "recall": 0.80,
+    #             "hallucination": 0.15
+    #         },
+    #         "production": {
+    #             "faithfulness": 0.90,
+    #             "relevancy": 0.90,
+    #             "recall": 0.90,
+    #             "hallucination": 0.05
+    #         }
+    #     }
 
     # =========================
     # DEFAULT PROFILE
     # =========================
-    if "eval_profile" not in st.session_state:
-        st.session_state.eval_profile = st.session_state.eval_profiles["poc"]
+    # if "eval_profile" not in st.session_state:
+    #     st.session_state.eval_profile = st.session_state.eval_profiles["poc"]
 
 # =========================================================
 # HEADER
@@ -352,14 +352,94 @@ def display_kpis():
 def sidebar_settings():
     st.sidebar.subheader("⚙️ Settings")
 
+    # =========================
+    # LLM CONFIG
+    # =========================
     with st.sidebar.expander("LLM Config"):
         temp = st.slider("Temperature", 0.0, 1.0, float(config.TEMPERATURE))
         k = st.slider("Retriever K", 1, 10, config.RETRIEVER_K)
         st.caption(f"Temp={temp}, K={k}")
 
+    # =========================
+    # CHUNK CONFIG
+    # =========================
     with st.sidebar.expander("Chunk Config"):
         chunk_size = st.number_input("Chunk Size", 200, 2000, config.PDF_CHUNK_SIZE)
         overlap = st.number_input("Overlap", 0, 500, config.PDF_CHUNK_OVERLAP)
+
+    # =========================
+    # CONTROL CENTER (NEW)
+    # =========================
+    with st.sidebar.expander("Control Center", expanded=True):
+
+        if st.session_state.bot_initialized:
+            st.success("System Online")
+        else:
+            st.warning("System Offline")
+
+            if st.button("Initialize AI", key="sidebar_init"):
+                if init_bot():
+                    st.rerun()
+
+        st.markdown("---")
+
+        st.subheader("Session Tools")
+
+        if st.button("Clear Conversation", key="sidebar_clear"):
+            st.session_state.conversation_history = []
+            st.rerun()
+
+        st.download_button(
+            label="Export Chat",
+            data=json.dumps({
+                "timestamp": datetime.now().isoformat(),
+                "messages": serialize_chat(st.session_state.conversation_history),
+                "stats": st.session_state.stats
+            }, indent=2),
+            file_name=f"rag_chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json"
+        )
+
+        if st.button("Reset Vector Database", key="sidebar_reset"):
+
+            db_path = Path("src/chroma_db")
+
+            try:
+                if "bot" in st.session_state:
+                    del st.session_state.bot
+
+                st.session_state.bot_initialized = False
+
+                gc.collect()
+                time.sleep(2)
+
+                import os
+
+                if db_path.exists():
+                    temp_path = db_path.parent / f"_delete_{int(time.time())}"
+
+                    os.rename(db_path, temp_path)
+
+                    for _ in range(6):
+                        try:
+                            shutil.rmtree(temp_path)
+                            break
+                        except:
+                            time.sleep(1)
+
+                initialize_session()
+
+                st.success("Vector DB reset successfully")
+                st.rerun()
+
+            except Exception as e:
+                st.error(f"Failed to reset database: {str(e)}")
+
+        st.markdown("---")
+
+        st.subheader("System Info")
+        st.write("Model: Groq LLM")
+        st.write(f"Vector DB: {config.VECTOR_STORE_TYPE}")
 
 # =========================================================
 # BOT INITIALIZATION
@@ -446,30 +526,19 @@ def display_sources(sources):
 # EVALUATION UI FUNCTIONS
 # =========================================================
 
-def display_metric_card(metric_name: str, score: float, threshold: float, passed: bool):
+def display_metric_card(metric_name: str, score: float):
 
-    # Normalize metric name
-    name = metric_name.lower()
-    # Use backend-evaluated values ONLY (no recomputation)
-
-    if "hallucination" in name:
-        # lower is better
-        color = "#ef4444" if score > threshold else "#3b82f6"
-    else:
-        color = "#10b981" if passed else "#ef4444"
-
-    # Layout
     col1, col2 = st.columns([3, 1])
 
     with col1:
-        if "hallucination" in name:
+        if "hallucination" in metric_name.lower():
             st.markdown("**Hallucination (Lower = Better)**")
         else:
             st.markdown(f"**{metric_name}**")
-    with col2:
-        st.markdown(f"**{'PASS' if passed else 'FAIL'}**")
 
-    # Progress bar
+    with col2:
+        st.markdown(f"**{score:.2f}**" if score is not None else "**N/A**")
+
     safe_score = min(max(score if score is not None else 0, 0), 1)
 
     st.markdown(
@@ -484,7 +553,7 @@ def display_metric_card(metric_name: str, score: float, threshold: float, passed
             <div style="
                 width:{int(safe_score*100)}%;
                 height:100%;
-                background:{color};
+                background:#3b82f6;
                 border-radius:999px;
                 transition:0.4s;
             "></div>
@@ -493,89 +562,84 @@ def display_metric_card(metric_name: str, score: float, threshold: float, passed
         unsafe_allow_html=True
     )
 
-    def safe_format(score):
-        return f"{score:.2f}" if score is not None else "N/A"
 
-    st.caption(f"Score: {safe_format(score)} | Threshold: {threshold:.2f}")
-
-
-def display_failure_analysis(result: Dict[str, Any]):
-    """Display failure analysis for a single test result"""
+# def display_failure_analysis(result: Dict[str, Any]):
+#     """Display failure analysis for a single test result"""
     
-    failure_analysis = result.get("failure_analysis", {})
+#     failure_analysis = result.get("failure_analysis", {})
     
-    if not failure_analysis:
-        return
+#     if not failure_analysis:
+#         return
     
-    failure_type = failure_analysis.get("failure_type", "unknown")
-    reason = failure_analysis.get("reason", "")
-    metric_alignment = failure_analysis.get("metric_alignment", "")
-    notes = failure_analysis.get("notes", "")
+#     failure_type = failure_analysis.get("failure_type", "unknown")
+#     reason = failure_analysis.get("reason", "")
+#     metric_alignment = failure_analysis.get("metric_alignment", "")
+#     notes = failure_analysis.get("notes", "")
     
-    # Color code by failure type
-    if failure_type == "hallucination":
-        color = "🔴 HALLUCINATION"
-    elif failure_type == "retrieval_miss":
-        color = "🟠 RETRIEVAL_MISS"
-    elif failure_type == "partial_answer":
-        color = "🟡 PARTIAL_ANSWER"
-    else:
-        color = "🟢 CORRECT"
+#     # Color code by failure type
+#     if failure_type == "hallucination":
+#         color = "🔴 HALLUCINATION"
+#     elif failure_type == "retrieval_miss":
+#         color = "🟠 RETRIEVAL_MISS"
+#     elif failure_type == "partial_answer":
+#         color = "🟡 PARTIAL_ANSWER"
+#     else:
+#         color = "🟢 CORRECT"
     
-    with st.expander(f"Failure Analysis: {color}"):
-        col1, col2 = st.columns(2)
+#     with st.expander(f"Failure Analysis: {color}"):
+#         col1, col2 = st.columns(2)
         
-        with col1:
-            st.write(f"**Type:** {failure_type.title()}")
-            st.write(f"**Reason:** {reason}")
+#         with col1:
+#             st.write(f"**Type:** {failure_type.title()}")
+#             st.write(f"**Reason:** {reason}")
         
-        with col2:
-            st.write(f"**Metric Alignment:** {metric_alignment.title()}")
-            st.write(f"**Impact:** {notes}")
+#         with col2:
+#             st.write(f"**Metric Alignment:** {metric_alignment.title()}")
+#             st.write(f"**Impact:** {notes}")
 
 
 def display_insights_dashboard(summary: Dict[str, Any], results: List[Dict[str, Any]]):
     """Display insights dashboard showing failure distribution and metric comparisons"""
     
-    st.subheader("📊 Insights Dashboard")
+    st.subheader("Insights Dashboard")
     
-    # Get failure distribution
-    failure_dist = summary.get("failure_distribution", {})
     
     col_left, col_right = st.columns(2)
     
     # LEFT: Failure Distribution
     with col_left:
-        st.markdown("### Failure Distribution")
+        st.markdown("### Distribution")
+        st.info("No failure classification in pure DeepEval mode")
+        # st.markdown("### Failure Distribution")
         
-        if failure_dist:
-            # Create pie chart
-            fig_dist = go.Figure(data=[go.Pie(
-                labels=list(failure_dist.keys()),
-                values=list(failure_dist.values()),
-                marker=dict(colors=['#ef4444', '#f97316', '#eab308', '#22c55e'])
-            )])
+        # if failure_dist:
+        #     # Create pie chart
+        #     fig_dist = go.Figure(data=[go.Pie(
+        #         labels=list(failure_dist.keys()),
+        #         values=list(failure_dist.values()),
+        #         marker=dict(colors=['#ef4444', '#f97316', '#eab308', '#22c55e'])
+        #     )])
             
-            fig_dist.update_layout(
-                height=300,
-                margin=dict(l=10, r=10, t=20, b=20)
-            )
+        #     fig_dist.update_layout(
+        #         height=300,
+        #         margin=dict(l=10, r=10, t=20, b=20)
+        #     )
             
-            st.plotly_chart(fig_dist, use_container_width=True)
+        #     st.plotly_chart(fig_dist, use_container_width=True)
             
-            # Statistics
-            st.markdown("**Breakdown:**")
-            for failure_type, count in sorted(failure_dist.items(), key=lambda x: x[1], reverse=True):
-                pct = (count / sum(failure_dist.values()) * 100) if failure_dist else 0
-                st.write(f"- **{failure_type.title()}**: {count} ({pct:.1f}%)")
-        else:
-            st.info("No failures detected - all tests passed!")
+        #     # Statistics
+        #     st.markdown("**Breakdown:**")
+        #     for failure_type, count in sorted(failure_dist.items(), key=lambda x: x[1], reverse=True):
+        #         pct = (count / sum(failure_dist.values()) * 100) if failure_dist else 0
+        #         st.write(f"- **{failure_type.title()}**: {count} ({pct:.1f}%)")
+        # else:
+        #     st.info("No failures detected - all tests passed!")
     
     # RIGHT: Metric Performance Comparison
     with col_right:
         st.markdown("### Metric Performance")
         
-        metrics = summary.get("metrics", {})
+        metrics = summary.get("metric_statistics", {})
         
         if metrics:
             metric_names = []
@@ -585,9 +649,9 @@ def display_insights_dashboard(summary: Dict[str, Any], results: List[Dict[str, 
             
             for metric_name, metric_stats in metrics.items():
                 metric_names.append(metric_name.replace("Metric", ""))
-                avg_scores.append(metric_stats.get("avg_score", 0))
-                min_scores.append(metric_stats.get("min_score", 0))
-                max_scores.append(metric_stats.get("max_score", 0))
+                avg_scores.append(metric_stats.get("mean", 0))
+                min_scores.append(metric_stats.get("min", 0))
+                max_scores.append(metric_stats.get("max", 0))
             
             # Create comparison bar chart
             fig_metrics = go.Figure(data=[
@@ -608,26 +672,7 @@ def display_insights_dashboard(summary: Dict[str, Any], results: List[Dict[str, 
     
     # Bottom: Key Findings
     st.markdown("---")
-    st.markdown("### Key Findings")
-    
-    unanswerable_results = [r for r in results if r.get("category") == "unanswerable"]
-    if unanswerable_results:
-        hallucinations = sum(1 for r in unanswerable_results if r.get("failure_analysis", {}).get("failure_type") == "hallucination")
-        halluc_rate = (hallucinations / len(unanswerable_results) * 100)
-        
-        st.metric(
-            f"Hallucination Rate (Unanswerable: {len(unanswerable_results)} cases)",
-            f"{halluc_rate:.1f}%",
-            delta=f"{hallucinations} detected"
-        )
-    
-    pass_rate = summary.get("pass_rate", 0)
-    if pass_rate > 80:
-        st.success(f" System performing well with {pass_rate:.1f}% pass rate")
-    elif pass_rate > 60:
-        st.warning(f"⚠ System at acceptable level with {pass_rate:.1f}% pass rate")
-    else:
-        st.error(f" System needs improvement - {pass_rate:.1f}% pass rate")
+
 
 
 def display_evaluation_test_cases():
@@ -684,10 +729,15 @@ def display_single_test_evaluation():
     if not llm_configured:
         st.error(f"⚠ LLM Judge Configuration Required\n\n{llm_msg}")
         return
+
+    # LLM validation handled internally by DeepEval pipeline
     
     # Select test case
-    test_ids = [f"Q#{tc['id']}: {tc['question'][:50]}..." 
-                for tc in st.session_state.evaluation_test_cases]
+    test_ids = [
+                f"[{tc['category'].upper()} | {tc['difficulty'].upper()}] "
+                f"Q#{tc['id']}: {tc['question'][:50]}..."
+                for tc in st.session_state.evaluation_test_cases
+                ]
     selected_idx = st.selectbox("Select Test Case", range(len(test_ids)), 
                                 format_func=lambda i: test_ids[i])
     
@@ -738,14 +788,11 @@ def display_single_test_evaluation():
                 with cols[idx % 2]:
 
                     score = metric_data.get("score")
-                    passed = metric_data.get("passed", False)
 
                     if score is not None:
                         display_metric_card(
                             metric_name,
-                            score,
-                            metric_data.get("threshold", 0),
-                            passed
+                            score
                         )
                     else:
                         st.warning(f"{metric_name}: No score")
@@ -821,16 +868,9 @@ def display_batch_evaluation():
         
         summary = st.session_state.evaluator.get_results_summary(batch_results)
         
-        col1, col2, col3, col4 = st.columns(4)
+        col1 = st.columns(1)[0]
         with col1:
-            st.metric("Total Tests", summary["total_tests"])
-        with col2:
-            st.metric("Passed", summary["passed_tests"])
-        with col3:
-            st.metric("Failed", summary["failed_tests"])
-        with col4:
-            pass_rate = (summary["passed_tests"] / summary["total_tests"] * 100) if summary["total_tests"] > 0 else 0
-            st.metric("Pass Rate", f"{pass_rate:.1f}%")
+            st.metric("Total Tests", summary.get("total_tests", 0))
 
 def serialize_chat(history):
     serialized = []
@@ -873,56 +913,15 @@ def display_evaluation_results():
     # 1. EXECUTIVE SUMMARY
     # ==============================
 
-    col1, col2, col3 = st.columns(3)
+    st.markdown("### Metric Performance")
 
-    pass_rate = (
-        summary["passed_tests"] / summary["total_tests"] * 100
-        if summary["total_tests"] > 0 else 0
-    )
+    for metric_name, metric_stats in summary.get("metric_statistics", {}).items():
+        score = metric_stats.get("mean", 0)
 
-    with col1:
-        st.metric("Pass Rate", f"{pass_rate:.1f}%")
-
-    with col2:
-        st.metric("Total Tests", summary["total_tests"])
-
-    with col3:
-        status = "Good" if pass_rate > 75 else "Needs Improvement"
-        st.metric("System Health", status)
-
-    st.divider()
-
-    # ==============================
-    # 2. METRIC PERFORMANCE (CLEAN)
-    # ==============================
-
-    st.markdown("### Key Metrics")
-
-    for metric_name, metric_stats in summary.get("metrics", {}).items():
-        score = metric_stats["avg_score"]
-
-        # reuse your clean progress UI
-        t = st.session_state.eval_profile
-
-        name = metric_name.lower()
-
-        if "hallucination" in name:
-            threshold = t["hallucination"]
-            passed = score <= threshold
-        elif "faithfulness" in name:
-            threshold = t["faithfulness"]
-            passed = score >= threshold
-        elif "relevancy" in name:
-            threshold = t["relevancy"]
-            passed = score >= threshold
-        elif "recall" in name:
-            threshold = t["recall"]
-            passed = score >= threshold
-        else:
-            threshold = 0.5
-            passed = score >= 0.5
-
-        display_metric_card(metric_name, score, threshold, passed)
+        display_metric_card(
+            metric_name,
+            score
+        )
 
     st.divider()
 
@@ -941,34 +940,29 @@ def display_evaluation_results():
     with st.expander("View Detailed Results"):
 
         # Category breakdown
-        if summary.get("by_category"):
-            df_category = pd.DataFrame([
-                {
-                    "Category": cat.title(),
-                    "Total": stats["count"],
-                    "Passed": stats["passed"],
-                    "Pass Rate (%)": round(
-                        stats["passed"] / stats["count"] * 100, 1
-                    )
-                }
-                for cat, stats in summary["by_category"].items()
-            ])
+        # if summary.get("by_category"):
+        #     df_category = pd.DataFrame([
+        #         {
+        #             "Category": cat.title(),
+        #             "Total": stats["count"],
+        #             "Passed": stats["passed"],
+        #             "Pass Rate (%)": round(
+        #                 stats["passed"] / stats["count"] * 100, 1
+        #             )
+        #         }
+        #         for cat, stats in summary["by_category"].items()
+        #     ])
 
-            st.dataframe(df_category, width='stretch')
+        #     st.dataframe(df_category, width='stretch')
 
-        st.write("---")
+        # st.write("---")
 
         # Test table
         results_data = []
 
         for result in st.session_state.evaluation_results:
 
-            if result.get("error"):
-                status = "ERROR"
-            elif result.get("overall_passed"):
-                status = "PASS"
-            else:
-                status = "FAIL"
+            status = "OK" if not result.get("error") else "ERROR"
 
             results_data.append({
                 "ID": result.get("test_id"),
@@ -978,7 +972,6 @@ def display_evaluation_results():
                     else result.get("question", "N/A")
                 ),
                 "Category": result.get("category", "N/A"),
-                "Status": status
             })
 
         if results_data:
@@ -986,7 +979,7 @@ def display_evaluation_results():
         
         # Show detailed results with failure analysis
         st.write("---")
-        st.subheader("Detailed Test Results with Failure Analysis")
+        st.subheader("Detailed Test Results")
         
         for result in st.session_state.evaluation_results:
             if result.get("error"):
@@ -996,7 +989,7 @@ def display_evaluation_results():
                 test_id = result.get("test_id")
                 category = result.get("category", "unknown")
                 question = result.get("question", "")
-                status = " PASS" if result.get("overall_passed") else " FAIL"
+                status = "Result"
                 
                 with st.expander(f"Test #{test_id} ({category}) - {status}", expanded=False):
                     col1, col2 = st.columns(2)
@@ -1016,14 +1009,15 @@ def display_evaluation_results():
                     for idx, (metric_name, metric_data) in enumerate(result.get("metrics", {}).items()):
                         with metric_cols[idx % 2]:
                             score = metric_data.get("score")
-                            passed = metric_data.get("passed", False)
                             if score is not None:
-                                display_metric_card(metric_name, score, metric_data.get("threshold", 0), passed)
+                                display_metric_card(
+                                    metric_name,
+                                    score
+                                )
                     
                     st.write("---")
                     
                     # Show failure analysis
-                    display_failure_analysis(result)
 
 def display_clean_dashboard():
     st.subheader("Evaluation Dashboard")
@@ -1039,26 +1033,11 @@ def display_clean_dashboard():
     # ======================
     # 1. EXECUTIVE KPI ROW
     # ======================
-    col1, col2, col3, col4 = st.columns(4)
+    st.markdown("### Key Metrics")
 
-    pass_rate = (
-        summary["passed_tests"] / summary["total_tests"] * 100
-        if summary["total_tests"] > 0 else 0
-    )
-
-    with col1:
-        st.metric("Pass Rate", f"{pass_rate:.1f}%")
-
-    with col2:
-        st.metric("Tests", summary["total_tests"])
-
-    with col3:
-        status = "Healthy" if pass_rate > 75 else "At Risk"
-        st.metric("System", status)
-
-    with col4:
-        risk = "High" if pass_rate < 60 else "Moderate" if pass_rate < 80 else "Low"
-        st.metric("Risk Level", risk)
+    for metric_name, metric_stats in summary["metric_statistics"].items():
+        score = metric_stats.get("mean", 0)
+        display_metric_card(metric_name, score)
 
     st.divider()
 
@@ -1071,38 +1050,17 @@ def display_clean_dashboard():
     with col_left:
         st.markdown("### Key Metrics")
 
-        for metric_name, metric_stats in summary["metrics"].items():
+        for metric_name, metric_stats in summary["metric_statistics"].items():
+            score = metric_stats.get("mean", 0)
 
-            score = metric_stats["avg_score"]
-
-            # FIX: correct pass logic
-            t = st.session_state.eval_profile
-            name = metric_name.lower()
-
-            if "hallucination" in name:
-                threshold = t["hallucination"]
-                passed = score <= threshold
-            elif "faithfulness" in name:
-                threshold = t["faithfulness"]
-                passed = score >= threshold
-            elif "relevancy" in name:
-                threshold = t["relevancy"]
-                passed = score >= threshold
-            elif "recall" in name:
-                threshold = t["recall"]
-                passed = score >= threshold
-            else:
-                threshold = 0.5
-                passed = score >= 0.5
-
-            display_metric_card(metric_name, score, threshold, passed)
+            display_metric_card(metric_name, score)
 
     # RIGHT → VISUAL
     with col_right:
         st.markdown("### Score Overview")
 
-        metric_names = list(summary["metrics"].keys())
-        scores = [summary["metrics"][m]["avg_score"] for m in metric_names]
+        metric_names = list(summary["metric_statistics"].keys())
+        scores = [summary["metric_statistics"][m]["mean"] for m in metric_names]
 
         fig = go.Figure()
         fig.add_trace(go.Bar(
@@ -1133,12 +1091,7 @@ def display_clean_dashboard():
         results_data = []
         for result in st.session_state.evaluation_results:
 
-            if result.get("error"):
-                status = "ERROR"
-            elif result.get("overall_passed"):
-                status = "PASS"
-            else:
-                status = "FAIL"
+            status = "OK" if not result.get("error") else "ERROR"
 
             results_data.append({
                 "ID": result.get("test_id"),
@@ -1171,9 +1124,9 @@ def display_metrics_dashboard():
     summary = st.session_state.evaluator.get_results_summary(st.session_state.evaluation_results)
     
     # Create metric score visualization
-    if summary.get("metrics"):
-        metric_names = list(summary["metrics"].keys())
-        avg_scores = [summary["metrics"][m]["avg_score"] for m in metric_names]
+    if summary.get("metric_statistics"):
+        metric_names = list(summary["metric_statistics"].keys())
+        avg_scores = [summary["metric_statistics"][m]["mean"] for m in metric_names]
         
         fig_metrics = go.Figure()
         fig_metrics.add_trace(go.Bar(
@@ -1204,54 +1157,38 @@ def display_metrics_dashboard():
         # KPIs
         col1, col2, col3 = st.columns(3)
 
-        pass_rate = (summary["passed_tests"] / summary["total_tests"] * 100)
+        # pass_rate = (summary["passed_tests"] / summary["total_tests"] * 100)
 
-        with col1:
-            st.metric("Pass Rate", f"{pass_rate:.1f}%")
+        # with col1:
+        #     st.metric("Pass Rate", f"{pass_rate:.1f}%")
 
-        with col2:
-            st.metric("Tests", summary["total_tests"])
+        # with col2:
+        #     st.metric("Tests", summary["total_tests"])
 
-        with col3:
-            status = "Healthy" if pass_rate > 75 else "At Risk"
-            st.metric("System", status)
+        # with col3:
+        #     status = "Healthy" if pass_rate > 75 else "At Risk"
+        #     st.metric("System", status)
 
-        st.divider()
+        # st.divider()
 
         st.markdown("### Key Metrics")
 
-        for metric_name, metric_stats in summary["metrics"].items():
+        for metric_name, metric_stats in summary["metric_statistics"].items():
 
-            score = metric_stats["avg_score"]
+            score = metric_stats.get("mean", 0)
 
-            # FIX: correct pass logic
-            t = st.session_state.eval_profile
-            name = metric_name.lower()
 
-            if "hallucination" in name:
-                threshold = t["hallucination"]
-                passed = score <= threshold
-            elif "faithfulness" in name:
-                threshold = t["faithfulness"]
-                passed = score >= threshold
-            elif "relevancy" in name:
-                threshold = t["relevancy"]
-                passed = score >= threshold
-            elif "recall" in name:
-                threshold = t["recall"]
-                passed = score >= threshold
-            else:
-                threshold = 0.5
-                passed = score >= 0.5
-
-            display_metric_card(metric_name, score, threshold, passed)
+            display_metric_card(
+                metric_name,
+                score
+            )
         
     with col_right:
 
         st.markdown("### Score Distribution")
 
-        metric_names = list(summary["metrics"].keys())
-        scores = [summary["metrics"][m]["avg_score"] for m in metric_names]
+        metric_names = list(summary["metric_statistics"].keys())
+        scores = [summary["metric_statistics"][m]["mean"] for m in metric_names]
 
         fig = go.Figure()
 
@@ -1297,104 +1234,6 @@ def main():
 
         with col_side:
 
-            st.title("Control Center")
-
-            st.write("---")
-
-            if st.session_state.bot_initialized:
-
-                st.success("System Online")
-
-            else:
-
-                st.warning("System Offline")
-
-                if st.button("Initialize AI"):
-
-                    if init_bot():
-                        st.rerun()
-
-            st.write("---")
-
-            st.subheader("Session Tools")
-
-            if st.button("Clear Conversation"):
-                st.session_state.conversation_history = []
-                st.rerun()
-
-            st.download_button(
-                label="Export Chat",
-                data=json.dumps({
-                    "timestamp": datetime.now().isoformat(),
-                    "messages": serialize_chat(st.session_state.conversation_history),
-                    "stats": st.session_state.stats
-                }, indent=2),
-                file_name=f"rag_chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                mime="application/json"
-            )
-
-            if st.button("Reset Vector Database"):
-
-                db_path = Path("src/chroma_db")
-
-                try:
-                    # =========================
-                    # 1. DESTROY BOT REFERENCE
-                    # =========================
-                    if "bot" in st.session_state:
-                        try:
-                            del st.session_state.bot
-                        except:
-                            pass
-
-                    st.session_state.bot_initialized = False
-
-                    # =========================
-                    # 2. FORCE MEMORY CLEANUP
-                    # =========================
-                    gc.collect()
-                    time.sleep(2)
-
-                    # =========================
-                    # 3. WINDOWS-SAFE DELETE
-                    # =========================
-                    import os
-
-                    if db_path.exists():
-                        temp_path = db_path.parent / f"_delete_{int(time.time())}"
-
-                        try:
-                            # rename first (bypasses lock)
-                            os.rename(db_path, temp_path)
-
-                            # then delete with retry
-                            for i in range(6):
-                                try:
-                                    shutil.rmtree(temp_path)
-                                    break
-                                except Exception:
-                                    time.sleep(1)
-
-                        except Exception as e:
-                            st.warning(f"Rename fallback failed: {e}")
-
-                    # =========================
-                    # 4. RE-INIT SESSION SAFELY
-                    # =========================
-                    initialize_session()
-
-                    st.success(" Vector database reset successfully")
-                    st.rerun()
-
-                except Exception as e:
-                    st.error(f"Failed to reset database: {str(e)}")
-
-            st.write("---")
-
-            st.subheader("System Info")
-
-            st.write("Model: Groq LLM")
-            st.write(f"Vector DB: {config.VECTOR_STORE_TYPE}")
             sidebar_settings()
         # -----------------------------------------------------
 
@@ -1489,12 +1328,7 @@ def main():
     with tab_evaluation:
         st.markdown("### Evaluation Mode")
 
-        selected_mode = st.selectbox(
-            "Select Evaluation Standard",
-            ["poc", "strong", "production"]
-        )
-
-        st.session_state.eval_profile = st.session_state.eval_profiles[selected_mode]
+        st.info("Using pure DeepEval (no thresholds, no pass/fail)")
 
         if not st.session_state.bot_initialized:
             st.warning("⚠ Initialize RAG bot in the Chat tab first!")

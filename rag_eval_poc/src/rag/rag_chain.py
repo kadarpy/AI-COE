@@ -48,6 +48,15 @@ def get_llm():
             temperature=config.TEMPERATURE,
             top_p=0.9
         )
+    elif provider == "deepseek":
+        logger.debug("Using Deepseek LLM")
+        from langchain_deepseek import ChatDeepSeek
+        return ChatDeepSeek(
+            model=config.LLM_MODEL,
+            temperature=config.TEMPERATURE,
+            api_key=config.API_KEY,
+            max_retries=3
+        )
     
     else:
         logger.error(f"Unknown provider: {provider}")
@@ -93,7 +102,7 @@ class RAGChain:
         if not docs:
             logger.warning("No documents retrieved - returning 'not found' response")
             return {
-                "result": "I could not find any relevant information in the documents to answer your question.",
+                "result": "The documents do not contain this information.",
                 "source_documents": [],
                 "retrieval_count": 0,
                 "is_rag": True

@@ -23,7 +23,7 @@ def get_embeddings():
         
         logger.info("Using HuggingFace sentence-transformers embeddings (384 dimensions)")
         embeddings = HuggingFaceEmbeddings(
-            model_name="bge-small",  # 384 dimensional embeddings
+            model_name="BAAI/bge-base-en-v1.5",  # 384 dimensional embeddings
             model_kwargs={"device": "cpu"}
         )
         return embeddings
@@ -130,12 +130,34 @@ def build_vector_store(chunks):
         embeddings = get_embeddings()
 
         logger.debug(f"Creating Chroma database at {config.CHROMA_DB_DIR}")
-        vectordb = Chroma.from_documents(
-            documents=chunks,
-            embedding=embeddings,
+        vectordb = Chroma(
             persist_directory=str(config.CHROMA_DB_DIR),
+            embedding_function=embeddings,
             collection_name="rag_documents"
         )
+
+        # ADD THIS BLOCK (CRITICAL FIX)
+        logger.info("Adding documents to vector store...")
+        vectordb.add_documents(chunks)
+
+        # Persist DB
+        vectordb.persist()
+
+        logger.info(f"{len(chunks)} documents successfully stored in vector DB")
+
+        # 🔥 FIX: ensure TF-IDF is fitted after loading
+        try:
+            if hasattr(embeddings, "fitted") and not embeddings.fitted:
+                logger.warning("TF-IDF not fitted → forcing fit using stored documents")
+
+                # pull all documents from DB
+                docs = vectordb.get()["documents"]
+
+                if docs:
+                    embeddings.embed_documents(docs)  # this fits vectorizer
+                    logger.info("TF-IDF successfully fitted after loading")
+        except Exception as e:
+            logger.warning(f"TF-IDF refit failed: {e}")
 
         logger.info("Vector database created successfully")
         logger.debug(f"Persisting database to {config.CHROMA_DB_DIR}")

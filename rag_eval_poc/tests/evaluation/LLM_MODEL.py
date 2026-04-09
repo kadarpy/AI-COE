@@ -1,6 +1,14 @@
+import sys
+from pathlib import Path
+
 from deepeval.models.base_model import DeepEvalBaseLLM
 from groq import Groq
-from rag_eval_poc.src import config
+
+# Add paths to handle imports from different working directories
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from config import config
 
 
 class GroqModel(DeepEvalBaseLLM):

@@ -49,17 +49,26 @@ class RAGBotDemo:
             logger.info("Configuration validated successfully")
 
             # Check if vector store exists
+            # Check if vector store exists
             if config.CHROMA_DB_DIR.exists():
-                logger.info("Loading existing vector store...")
-                self.vectordb = load_vector_store()
-            elif self.pdf_path:
-                logger.info(f"Loading documents from {self.pdf_path}...")
-                chunks = load_documents(self.pdf_path)
-                logger.info("Building vector store...")
-                self.vectordb = build_vector_store(chunks)
+                try:
+                    self.vectordb = load_vector_store()
+
+                    if self.vectordb._collection.count() == 0:
+                        logger.warning("Empty vector DB detected → rebuilding")
+                        raise ValueError("Empty DB")
+
+                except Exception as e:
+                    logger.warning(f"Vector DB invalid → rebuilding: {e}")
+                    chunks = load_documents(self.pdf_path)
+                    self.vectordb = build_vector_store(chunks)
+
             else:
-                logger.error("No vector store found and no PDF path provided")
-                return False
+                # THIS BLOCK WAS MISSING (ROOT CAUSE)
+                logger.info("No existing vector DB found → building new one")
+
+                chunks = load_documents(self.pdf_path)
+                self.vectordb = build_vector_store(chunks)
 
             # Build RAG chain
             logger.info("Building RAG chain...")

@@ -1,5 +1,15 @@
 """
-PRODUCTION-GRADE RAG EVALUATION MODULE (FULLY COMPATIBLE)
+PURE DEEPEVAL EVALUATION PIPELINE
+==================================
+ZERO custom scoring logic. DeepEval metrics are the ONLY source of truth.
+
+Metrics only (no thresholds, no pass/fail logic, no overrides):
+- HallucinationMetric
+- FaithfulnessMetric
+- AnswerRelevancyMetric
+- ContextualRecallMetric
+
+Returns raw metric scores with error handling.
 """
 
 import json
@@ -16,9 +26,10 @@ import os
 
 from dotenv import load_dotenv
 
-# =========================
-# ENV LOADING
-# =========================
+os.environ["CONFIDENT_METRIC_LOGGING_VERBOSE"] = "0"
+os.environ["CONFIDENT_DISABLE_TELEMETRY"] = "1"
+os.environ["CONFIDENT_API_KEY"] = "dummy_key"
+
 config_path = Path(__file__).parent.parent / "config" / ".env"
 if config_path.exists():
     load_dotenv(config_path, override=True)
@@ -36,276 +47,215 @@ from deepeval.metrics import (
 from config import config
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
+from deepeval.models.base_model import DeepEvalBaseLLM
+from groq import Groq
+
+
+class GroqDeepEvalLLM(DeepEvalBaseLLM):
+    def __init__(self, api_key: str, model_name: str):
+        self.api_key = api_key
+        self.model_name = model_name
+        self.client = Groq(api_key=api_key)
+
+    def load_model(self):
+        return self
+
+    def generate(self, prompt: str) -> str:
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0  # deterministic for eval
+        )
+        return response.choices[0].message.content
+
+    async def a_generate(self, prompt: str) -> str:
+        return self.generate(prompt)
+
+    def get_model_name(self) -> str:
+        return self.model_name
 # =========================
-# CACHE (REPRODUCIBILITY)
-# =========================
-_CACHE = {}
-
-def _hash_key(*args):
-    return hashlib.md5(str(args).encode()).hexdigest()
-
-
-# =========================
-# LLM WRAPPER
-# =========================
-def _get_llm():
-    try:
-        from langchain_groq import ChatGroq
-        from deepeval.models import DeepEvalBaseLLM
-
-        api_key = getattr(config, "API_KEY", None) or os.getenv("API_KEY")
-
-        if not api_key:
-            logger.warning("API_KEY missing")
-            return None
-        print("API KEY:", api_key)
-        class GroqModel(DeepEvalBaseLLM):
-            def __init__(self):
-                self.client = ChatGroq(
-                    api_key=api_key,
-                    model=config.LLM_MODEL,
-                    temperature=0.0  # FORCE deterministic
-                )
-
-            def load_model(self):
-                return self.client
-
-            def get_model_name(self):
-                return config.LLM_MODEL
-
-            def generate(self, prompt: str) -> str:
-                return self.client.invoke(prompt).content
-
-            async def a_generate(self, prompt: str) -> str:
-                return (await self.client.ainvoke(prompt)).content
-
-        return GroqModel()
-
-    except Exception as e:
-        logger.error(f"LLM init failed: {e}")
-        return None
-
-
-_llm = None
-
-def _ensure_llm():
-    global _llm
-    if _llm is None:
-        _llm = _get_llm()
-    return _llm
-
-# =========================
-# DETERMINISTIC METRICS
+# LLM FOR DEEPEVAL METRICS
 # =========================
 
-def normalize_text(text: str) -> str:
-    text = text.lower().strip()
-    text = re.sub(r'\s+', ' ', text)  # normalize spaces
-    return text
+def get_deepeval_llm():
+    from config import config
+    import os
 
-def extract_number(text: str):
-    import re
-    match = re.search(r'\d+(\.\d+)?', text)
-    return float(match.group()) if match else None
+    api_key = config.API_KEY or os.getenv("API_KEY")
 
-def is_no_answer(text: str) -> bool:
-    text = text.lower()
+    if not api_key:
+        raise ValueError("API_KEY missing")
 
-    keywords = [
-        "not contain",
-        "not found",
-        "no information",
-        "not mentioned",
-        "not defined",
-        "cannot be found"
-    ]
-
-    return any(k in text for k in keywords)
-
-def is_valid(score):
-    return score is not None
-
-def fmt(score):
-    return f"{score:.2f}" if score is not None else "N/A"
-
-def safe_score(score):
-    return min(max(score if score is not None else 0, 0), 1)
-
-def exact_match(a, b):
-    a_norm = normalize_text(a)
-    b_norm = normalize_text(b)
-
-    if is_no_answer(a_norm) and is_no_answer(b_norm):
-        return 1.0
-
-    if b_norm in a_norm:
-        return 1.0
-
-    # numeric fallback (existing)
-    a_num = extract_number(a_norm)
-    b_num = extract_number(b_norm)
-
-    if a_num is not None and b_num is not None:
-        if abs(a_num - b_num) <= 0.1:
-            return 1.0
-
-    return 0.0
-
-def token_overlap(a, b):
-    a_norm = normalize_text(a)
-    b_norm = normalize_text(b)
-
-    if is_no_answer(a_norm) and is_no_answer(b_norm):
-        return 1.0
-
-    if b_norm in a_norm:
-        return 1.0
-
-    a_tokens = set(a_norm.split())
-    b_tokens = set(b_norm.split())
-
-    if not b_tokens:
-        return 0.0
-
-    return len(a_tokens & b_tokens) / len(b_tokens)
-
+    return GroqDeepEvalLLM(
+        api_key=api_key,
+        model_name=config.LLM_MODEL
+    )
 
 # =========================
-# SAFE EXECUTION
+# PURE DEEPEVAL RUNNER
 # =========================
-def safe_measure(metric, test_case, retries=3):
-    for i in range(retries):
-        try:
-            metric.measure(test_case)
-            return metric
-        except Exception as e:
-            if "429" in str(e) or "rate" in str(e).lower():
-                time.sleep((2 ** i))
-            else:
-                time.sleep(1)
-    raise RuntimeError("Metric failed after retries")
 
-
-# =========================
-# FAILURE ANALYSIS ENGINE
-# =========================
-def analyze_failure(question: str, expected_answer: str, actual_answer: str, metrics: Dict[str, Any], retrieval_context: List[str]) -> Dict[str, Any]:
+def evaluate_test_case(
+    test_id: str,
+    question: str,
+    actual_answer: str,
+    expected_answer: str,
+    retrieval_context: List[str]
+) -> Dict[str, Any]:
     """
-    Analyze failure pattern for a test case
+    Run PURE DeepEval evaluation. NO custom logic.
     
-    Returns structured failure analysis:
-    - failure_type: Classification of failure or success
-    - reason: Clear explanation of the issue
-    - metric_alignment: Whether metrics correctly identified the issue
-    - notes: Detailed explanation
-    """
-    
-    hallucination_score = metrics.get("Hallucination", {}).get("score")
-    faithfulness_score = metrics.get("Faithfulness", {}).get("score")
-    relevancy_score = metrics.get("AnswerRelevancy", {}).get("score")
-    recall_score = metrics.get("ContextualRecall", {}).get("score")
-    exact_match_score = metrics.get("ExactMatch", {}).get("score")
-    
-    # Normalize text for comparison
-    expected_norm = normalize_text(expected_answer)
-    actual_norm = normalize_text(actual_answer)
-    
-    # Determine failure type
-    failure_type = "correct"
-    reason = ""
-    metric_alignment = "correct"
-    notes = ""
-    
-    # Check for hallucination (score > 0.3 indicates hallucination detected)
-    if hallucination_score is not None and hallucination_score > 0.3:
-        failure_type = "hallucination"
-        reason = f"Model generated content not supported by documents"
-        metric_alignment = "correct"
-        notes = f"Hallucination metric score: {hallucination_score:.2f}. Model fabricated or inferred information beyond source context."
-    
-    # Check for retrieval miss (no context retrieved or low recall)
-    elif not retrieval_context or (recall_score is not None and recall_score < 0.4):
-        failure_type = "retrieval_miss"
-        reason = "Failed to retrieve relevant context from documents"
-        metric_alignment = "correct"
-        notes = f"Only {len(retrieval_context)} documents retrieved. Low contextual recall score: {f'{recall_score:.2f}' if recall_score is not None else 'N/A'}"
-    # Check for unanswerable question handled correctly
-    elif is_no_answer(actual_norm) and is_no_answer(expected_norm):
-        failure_type = "correct"
-        reason = "Correctly identified unanswerable question"
-        metric_alignment = "correct"
-        notes = "Model appropriately refused to answer question not in documents"
-    
-    # Check for unanswerable question incorrectly answered
-    elif is_no_answer(expected_norm) and not is_no_answer(actual_norm):
-        failure_type = "hallucination"
-        reason = "Model answered question marked as unanswerable in documents"
-        metric_alignment = "correct" if (hallucination_score is not None and hallucination_score > 0.3) else "false_negative"
-        notes = f"Expected 'not found' response but got: '{actual_answer[:100]}...'. This is hallucination or going beyond documents."
-    
-    # Check for partial answer (relevancy high but not exact match)
-    elif relevancy_score is not None and relevancy_score > 0.7 and faithfulness_score is not None and faithfulness_score > 0.6 and exact_match_score is not None and exact_match_score < 0.7:
-        failure_type = "partial_answer"
-        reason = f"Answer is relevant and faithful but incomplete or slightly different from expected"
-        metric_alignment = "false_negative"
-        notes = f"Relevancy: {relevancy_score:.2f}, Faithfulness: {faithfulness_score:.2f}, but not exact match. Model provided acceptable answer but not the exact phrasing."
-    
-    # Check for low faithfulness (answer doesn't match documents)
-    elif faithfulness_score is not None and faithfulness_score < 0.5:
-        failure_type = "partial_answer"
-        reason = "Answer doesn't faithfully follow source documents"
-        metric_alignment = "correct"
-        notes = f"Faithfulness score low ({faithfulness_score:.2f}). Answer diverges from or contradicts document content."
-    
-    # Check for low relevancy (answer doesn't address question)
-    elif relevancy_score is not None and relevancy_score < 0.5:
-        failure_type = "partial_answer"
-        reason = "Answer doesn't relevantly address the question asked"
-        metric_alignment = "correct"
-        notes = f"Answer relevancy score low ({relevancy_score:.2f}). Model answered a different question or missed the point."
-    
-    # All metrics passing indicates correct answer
-    else:
-        if (exact_match_score == 1.0 and faithfulness_score is not None and faithfulness_score > 0.8 and relevancy_score is not None and relevancy_score > 0.8):
-            failure_type = "correct"
-            reason = "Answer is correct, faithful, and relevant"
-            metric_alignment = "correct"
-            notes = f"All metrics indicate strong answer quality. Exact match: {exact_match_score}, Faithfulness: {faithfulness_score:.2f}, Relevancy: {relevancy_score:.2f}"
-        elif exact_match_score is not None and exact_match_score > 0.7 and faithfulness_score is not None and faithfulness_score > 0.7:
-            failure_type = "correct"
-            reason = "Answer is substantially correct with acceptable metric scores"
-            metric_alignment = "correct"
-            notes = f"Strong answer quality with appropriate semantic matching. Exact match: {exact_match_score:.2f}, Faithfulness: {faithfulness_score:.2f}"
-        else:
-            failure_type = "correct"
-            reason = "Answer appears acceptable based on available metrics"
-            metric_alignment = "correct"
-            notes = (
-                f"Hallucination: {f'{hallucination_score:.2f}' if hallucination_score is not None else 'N/A'}, "
-                f"Faithfulness: {f'{faithfulness_score:.2f}' if faithfulness_score is not None else 'N/A'}, "
-                f"Relevancy: {f'{relevancy_score:.2f}' if relevancy_score is not None else 'N/A'}"
-            )
-    return {
-        "failure_type": failure_type,
-        "reason": reason,
-        "metric_alignment": metric_alignment,
-        "notes": notes
+    Returns raw metric scores ONLY:
+    {
+        "test_id": str,
+        "question": str,
+        "actual_answer": str,
+        "expected_answer": str,
+        "metrics": {
+            "Hallucination": {"score": float or None, "reason": str},
+            "Faithfulness": {"score": float or None, "reason": str},
+            "AnswerRelevancy": {"score": float or None, "reason": str},
+            "ContextualRecall": {"score": float or None, "reason": str}
+        }
     }
+    """
+    
+    logger.info(f"Evaluating test {test_id}")
+    
+    # Create test case
+    test_case = LLMTestCase(
+        input=question,
+        actual_output=actual_answer,
+        expected_output=expected_answer,
+        retrieval_context=retrieval_context if retrieval_context else [],
+        context=retrieval_context if retrieval_context else []
+    )
+        
+    llm = get_deepeval_llm()
+    
+    results = {
+        "test_id": test_id,
+        "question": question,
+        "actual_answer": actual_answer,
+        "expected_answer": expected_answer,
+        "metrics": {}
+    }
+    
+    # Metric 1: Hallucination
+    try:
+        logger.debug("Running Hallucination...")
+        metric = HallucinationMetric(model=llm)
+        metric.measure(test_case)
+        results["metrics"]["Hallucination"] = {
+            "score": float(metric.score),
+            "reason": metric.reason
+        }
+        logger.info(f"Hallucination: {metric.score:.3f}")
+    except Exception as e:
+        logger.error(f"Hallucination failed: {e}")
+        results["metrics"]["Hallucination"] = {
+            "score": None,
+            "reason": f"error: {str(e)}"
+        }
+    
+    # Metric 2: Faithfulness
+    try:
+        logger.debug("Running Faithfulness...")
+        metric = FaithfulnessMetric(model=llm)
+        metric.measure(test_case)
+        results["metrics"]["Faithfulness"] = {
+            "score": float(metric.score),
+            "reason": metric.reason
+        }
+        logger.info(f"Faithfulness: {metric.score:.3f}")
+    except Exception as e:
+        logger.error(f"Faithfulness failed: {e}")
+        results["metrics"]["Faithfulness"] = {
+            "score": None,
+            "reason": f"error: {str(e)}"
+        }
+    
+    # Metric 3: AnswerRelevancy
+    try:
+        logger.debug("Running AnswerRelevancy...")
+        metric = AnswerRelevancyMetric(model=llm)
+        metric.measure(test_case)
+        results["metrics"]["AnswerRelevancy"] = {
+            "score": float(metric.score),
+            "reason": metric.reason
+        }
+        logger.info(f"AnswerRelevancy: {metric.score:.3f}")
+    except Exception as e:
+        logger.error(f"AnswerRelevancy failed: {e}")
+        results["metrics"]["AnswerRelevancy"] = {
+            "score": None,
+            "reason": f"error: {str(e)}"
+        }
+    
+    # Metric 4: ContextualRecall
+    try:
+        logger.debug("Running ContextualRecall...")
+        metric = ContextualRecallMetric(model=llm)
+        metric.measure(test_case)
+        results["metrics"]["ContextualRecall"] = {
+            "score": float(metric.score),
+            "reason": metric.reason
+        }
+        logger.info(f"ContextualRecall: {metric.score:.3f}")
+    except Exception as e:
+        logger.error(f"ContextualRecall failed: {e}")
+        results["metrics"]["ContextualRecall"] = {
+            "score": None,
+            "reason": f"error: {str(e)}"
+        }
+    
+    logger.info(f"Test {test_id} complete")
+    return results
 
 
 # =========================
-# CORE EVALUATION
+# CONTEXT EXTRACTION
 # =========================
+
+def extract_context_from_retrieval(source_documents: Any) -> List[str]:
+    """
+    Extract context from RAG retrieval result.
+    Returns List[str] for DeepEval (never None, always a list).
+    
+    Args:
+        source_documents: LangChain Document objects or list
+        
+    Returns:
+        List of context strings
+    """
+    if not source_documents:
+        return []
+    
+    context = []
+    try:
+        for doc in source_documents:
+            if hasattr(doc, 'page_content'):
+                content = str(doc.page_content).strip()
+                if content:
+                    context.append(content)
+    except Exception as e:
+        logger.warning(f"Failed to extract context: {e}")
+    
+    return context
+
+
+# =========================
+# EVALUATION METRICS CLASS
+# =========================
+
 class EvaluationMetrics:
-
-    @staticmethod
-    def _check_llm_configured() -> Tuple[bool, str]:
-        api_key = os.getenv("API_KEY") or config.API_KEY
-        if api_key:
-            return True, f"Using {config.LLM_MODEL} for evaluation"
-        return False, "API_KEY missing"
-
+    """Pure DeepEval wrapper. No custom logic."""
+    
     @staticmethod
     def evaluate_response(
         question: str,
@@ -313,189 +263,28 @@ class EvaluationMetrics:
         expected_answer: str,
         retrieval_context: List[str]
     ) -> Dict[str, Any]:
-
-        # =========================
-        # FAIL FAST: NO CONTEXT
-        # =========================
-        if not retrieval_context:
-            return {
-                "metrics": {},
-                "overall_passed": False,
-                "error": "No retrieval context"
-            }
-
-        cache_key = _hash_key(question, actual_answer, expected_answer)
-        if cache_key in _CACHE:
-            return _CACHE[cache_key]
-
-        llm = _ensure_llm()
-        if not llm:
-            return {
-                "metrics": {},
-                "overall_passed": False,
-                "error": "LLM unavailable"
-            }
-
-        # =========================
-        # STREAMLIT THRESHOLDS
-        # =========================
-        try:
-            t = st.session_state.get("eval_profile")
-        except:
-            t = st.session_state.get("eval_profile") or {
-                "faithfulness": 0.7,
-                "relevancy": 0.7,
-                "recall": 0.6,
-                "hallucination": 0.2
-            }
-
-        test_case = LLMTestCase(
-            input=question,
-            actual_output=actual_answer,
-            expected_output=expected_answer,
+        """
+        Evaluate using pure DeepEval (raw metric scores only).
+        
+        Returns:
+            {"metrics": {...}}
+        """
+        if not isinstance(retrieval_context, list):
+            retrieval_context = []
+        
+        result = evaluate_test_case(
+            test_id="inline",
+            question=question,
+            actual_answer=actual_answer,
+            expected_answer=expected_answer,
             retrieval_context=retrieval_context
         )
-
-        metrics = {}
-
-        # =========================
-        # LLM METRICS
-        # =========================
-        try:
-            try:
-                h = safe_measure(HallucinationMetric(model=llm), test_case)
-                score = h.score
-            except:
-                score = 0.0  # assume safe
-
-            metrics["Hallucination"] = {
-                "score": score,
-                "threshold": t["hallucination"],
-                "passed": score <= t["hallucination"]
-            }
-        except Exception as e:
-            logger.error(f"Hallucination metric failed: {e}")
-            metrics["Hallucination"] = {
-                "score": None,
-                "threshold": t["hallucination"],
-                "passed": False,
-                "error": str(e)
-            }
-
-        try:
-            f = safe_measure(FaithfulnessMetric(model=llm), test_case)
-            metrics["Faithfulness"] = {
-                "score": f.score,
-                "threshold": t["faithfulness"],
-                "passed": f.score >= t["faithfulness"]
-            }
-        except Exception as e:
-            logger.error(f"Faithfulness metric failed: {e}")
-            metrics["Faithfulness"] = {
-                "score": None,
-                "threshold": t["faithfulness"],
-                "passed": False,
-                "error": str(e)
-            }
-
-        try:
-            r = safe_measure(AnswerRelevancyMetric(model=llm), test_case)
-            metrics["AnswerRelevancy"] = {
-                "score": r.score,
-                "threshold": t["relevancy"],
-                "passed": r.score >= t["relevancy"]
-            }
-            # override relevancy for no-answer correctness
-            if is_no_answer(actual_answer) and is_no_answer(expected_answer):
-                metrics["AnswerRelevancy"] = {
-                    "score": 1.0,
-                    "threshold": t["relevancy"],
-                    "passed": True
-                }
-        except Exception as e:
-            logger.error(f"AnswerRelevancy metric failed: {e}")
-            metrics["AnswerRelevancy"] = {
-                "score": None,
-                "threshold": t["relevancy"],
-                "passed": False,
-                "error": str(e)
-            }
-
-        try:
-            c = safe_measure(ContextualRecallMetric(model=llm), test_case)
-            metrics["ContextualRecall"] = {
-                "score": c.score,
-                "threshold": t["recall"],
-                "passed": c.score >= t["recall"]
-            }
-        except Exception as e:
-            logger.error(f"ContextualRecall metric failed: {e}")
-            metrics["ContextualRecall"] = {
-                "score": None,
-                "threshold": t["recall"],
-                "passed": False,
-                "error": str(e)
-            }
-
-        # =========================
-        # DETERMINISTIC METRICS
-        # =========================
-        em = exact_match(actual_answer, expected_answer)
-        overlap = token_overlap(actual_answer, expected_answer)
-
-        metrics["ExactMatch"] = {
-            "score": em,
-            "threshold": 1.0,
-            "passed": em == 1.0
+        
+        return {
+            "metrics": result.get("metrics", {}),
+            "test_id": result.get("test_id")
         }
 
-        metrics["TokenOverlap"] = {
-            "score": overlap,
-            "threshold": 0.5,
-            "passed": overlap >= 0.5
-        }
-
-        # =========================
-        # FINAL PASS LOGIC
-        # =========================
-        valid_scores = [m["score"] for m in metrics.values() if m.get("score") is not None]
-        if not valid_scores:
-            overall_passed = False
-        else:
-            weights = {
-                "Faithfulness": 0.3,
-                "AnswerRelevancy": 0.25,
-                "ContextualRecall": 0.2,
-                "ExactMatch": 0.15,
-                "TokenOverlap": 0.1
-            }
-
-            weighted_sum = 0
-            total_weight = 0
-
-            for name, m in metrics.items():
-                if m.get("score") is not None and name in weights:
-                    weighted_sum += m["score"] * weights[name]
-                    total_weight += weights[name]
-
-            final_score = weighted_sum / total_weight if total_weight else 0
-            overall_passed = final_score >= 0.7
-
-            result = {
-                "metrics": metrics,
-                "overall_passed": overall_passed
-            }
-
-            _CACHE[cache_key] = result
-            return result
-        # fallback safety (never return None)
-        result = {
-            "metrics": metrics,
-            "overall_passed": overall_passed
-        }
-
-        _CACHE[cache_key] = result
-        return result
 
 
 # =========================
@@ -525,151 +314,202 @@ class TestCaseManager:
         return self.test_cases
 
     def get_test_case_by_id(self, test_id):
-        return next((tc for tc in self.test_cases if tc.get("id") == test_id), None)
-
+        for tc in self.test_cases:
+            if tc.get("id") == test_id:
+                return tc
+        return None
 
 # =========================
-# UI EVALUATOR (COMPATIBLE)
+# UI EVALUATOR
 # =========================
+
 class UIEvaluator:
+    """
+    Evaluate RAG test cases with pure DeepEval.
+    No threshold logic, no pass/fail flags.
+    """
 
     def __init__(self, qa_chain):
+        """
+        Args:
+            qa_chain: LangChain RAG chain
+        """
         self.qa_chain = qa_chain
         self.results = []
         self.test_case_manager = TestCaseManager()
+        logger.info("UIEvaluator initialized")
 
-    @staticmethod
-    def _check_llm_for_metrics():
-        return EvaluationMetrics._check_llm_configured()
-
-    def evaluate_single_test(self, test_case):
-
+    def evaluate_single_test(self, test_case: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Evaluate single test case.
+        
+        Args:
+            test_case: Dict with question, expected_answer, etc.
+            
+        Returns:
+            Result dict with metrics
+        """
         question = test_case.get("question", "")
         expected_answer = test_case.get("expected_answer", "")
+        test_id = test_case.get("id")
+        
+        logger.info(f"Evaluating test {test_id}")
 
+        # Run RAG chain
         try:
             result = self.qa_chain.invoke({"query": question})
 
             actual_answer = result.get("result", "")
-            source_docs = result.get("source_documents", [])
 
-            retrieval_context = [
-                doc.page_content for doc in source_docs
-            ] if source_docs else []
+            # ALWAYS DEFINE FIRST
+            source_docs = result.get("source_documents", []) or []
+
+            retrieval_context = extract_context_from_retrieval(source_docs)
+
+            #  SAFE DEBUG (after assignment)
+            logger.info(f"Retrieved {len(source_docs)} documents")
 
         except Exception as e:
+            logger.error(f"RAG execution failed: {e}")
             return {
-                "test_id": test_case.get("id"),
+                "test_id": test_id,
+                "question": question,
                 "error": str(e),
-                "overall_passed": False
+                "timestamp": datetime.now().isoformat()
             }
 
+        # Run pure DeepEval
         eval_result = EvaluationMetrics.evaluate_response(
-            question,
-            actual_answer,
-            expected_answer,
-            retrieval_context
+            question=question,
+            actual_answer=actual_answer,
+            expected_answer=expected_answer,
+            retrieval_context=retrieval_context
         )
 
-        # Perform failure analysis
-        failure_analysis = analyze_failure(
-            question,
-            expected_answer,
-            actual_answer,
-            eval_result["metrics"],
-            retrieval_context
-        )
-
+        # Assemble output
         output = {
-            "test_id": test_case.get("id"),
+            "test_id": test_id,
             "category": test_case.get("category", "unknown"),
+            "difficulty": test_case.get("difficulty", "unknown"),
             "question": question,
             "expected_answer": expected_answer,
             "actual_answer": actual_answer,
-            "context": "\n\n".join(retrieval_context),
             "num_retrieved_docs": len(retrieval_context),
-            "metrics": eval_result["metrics"],
-            "overall_passed": eval_result["overall_passed"],
-            "failure_analysis": failure_analysis,
+            "metrics": eval_result.get("metrics", {}),
             "timestamp": datetime.now().isoformat()
         }
 
         self.results.append(output)
+        logger.info(f"Test {test_id} complete")
+        
         return output
+    
+    @staticmethod
+    def _check_llm_for_metrics():
+        try:
+            from config import config
+            import os
 
-    def evaluate_batch(self, test_cases, progress_callback=None):
+            api_key = getattr(config, "API_KEY", None) or os.getenv("API_KEY")
 
-        results = []
+            if not api_key:
+                return False, "API_KEY is not set in environment or config/.env"
 
-        for idx, tc in enumerate(test_cases):
-            res = self.evaluate_single_test(tc)
-            results.append(res)
+            return True, "LLM ready for DeepEval"
 
-            if progress_callback:
-                progress_callback(idx + 1, len(test_cases))
+        except Exception as e:
+            return False, str(e)
 
-        return results
+    def evaluate_batch(
+        self,
+        test_cases: List[Dict[str, Any]],
+        progress_callback=None
+    ) -> List[Dict[str, Any]]:
+        """
+        Evaluate multiple test cases.
+        
+        Args:
+            test_cases: List of test case dicts
+            progress_callback: Optional progress callback
+            
+        Returns:
+            List of results
+        """
+        logger.info(f"Batch evaluation: {len(test_cases)} cases")
+        
+        for i, test_case in enumerate(test_cases, 1):
+            try:
+                self.evaluate_single_test(test_case)
+                if progress_callback:
+                    progress_callback(i, len(test_cases))
+            except Exception as e:
+                logger.error(f"Test {i} failed: {e}")
+                self.results.append({
+                    "test_id": test_case.get("id", i),
+                    "error": str(e)
+                })
+        
+        return self.results
 
-    def get_results_summary(self, results=None):
-
-        results = results or self.results
-
-        if not results:
+    def get_results_summary(self) -> Dict[str, Any]:
+        """
+        Return raw metric statistics (no interpretation).
+        
+        Returns:
+            Summary dict with metric stats
+        """
+        if not self.results:
             return {}
 
-        total = len(results)
-        passed = sum(1 for r in results if r.get("overall_passed"))
-
-        # Count failure types
-        failure_types = {}
-        for r in results:
-            failure_analysis = r.get("failure_analysis", {})
-            failure_type = failure_analysis.get("failure_type", "unknown")
-            failure_types[failure_type] = failure_types.get(failure_type, 0) + 1
-
-        summary = {
-            "total_tests": total,
-            "passed_tests": passed,
-            "failed_tests": total - passed,
-            "pass_rate": (passed / total * 100) if total > 0 else 0,
-            "failure_distribution": failure_types,
-            "metrics": {}
+        total = len(self.results)
+        
+        # Collect scores by metric
+        metric_scores = {
+            "Hallucination": [],
+            "Faithfulness": [],
+            "AnswerRelevancy": [],
+            "ContextualRecall": []
         }
 
-        metric_names = [
-            "Hallucination",
-            "Faithfulness",
-            "AnswerRelevancy",
-            "ContextualRecall"
-        ]
+        for result in self.results:
+            metrics = result.get("metrics", {})
+            for metric_name in metric_scores:
+                score = metrics.get(metric_name, {}).get("score")
+                if score is not None:
+                    metric_scores[metric_name].append(score)
 
-        for name in metric_names:
-            scores = [
-                r["metrics"][name]["score"]
-                for r in results
-                if name in r.get("metrics", {}) and r["metrics"][name].get("score") is not None
-            ]
+        # Compute statistics
+        summary = {
+            "total_tests": total,
+            "metric_statistics": {}
+        }
 
+        for metric_name, scores in metric_scores.items():
             if scores:
-                summary["metrics"][name] = {
-                    "avg_score": sum(scores) / len(scores),
-                    "min_score": min(scores),
-                    "max_score": max(scores)
+                import statistics
+                summary["metric_statistics"][metric_name] = {
+                    "count": len(scores),
+                    "mean": statistics.mean(scores),
+                    "stdev": statistics.stdev(scores) if len(scores) > 1 else 0.0,
+                    "min": min(scores),
+                    "max": max(scores)
                 }
 
+        logger.info(f"Summary: {total} tests evaluated")
         return summary
 
-    def export_results_json(self, output_file=None, results=None):
-
-        results = results or self.results
-
+    def export_results_json(self, output_file: str = None) -> str:
+        """Export results to JSON"""
+        import json
+        
         if not output_file:
             output_dir = config.EVALUATION_DIR
             output_dir.mkdir(parents=True, exist_ok=True)
-
             output_file = output_dir / f"eval_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
         with open(output_file, "w") as f:
-            json.dump(results, f, indent=2)
+            json.dump(self.results, f, indent=2, default=str)
 
+        logger.info(f"Results exported to {output_file}")
+        return str(output_file)
         return str(output_file)

@@ -31,6 +31,7 @@ class Config:
     # Groq Configuration (FREE - RECOMMENDED)
     API_KEY = os.getenv("API_KEY", "")
     LLM_MODEL = os.getenv("LLM_MODEL")
+    CONFIDENT_API_KEY = os.getenv("CONFIDENT_API_KEY", "")
     
     # Temperature for all providers
     TEMPERATURE = float(os.getenv("TEMPERATURE"))
@@ -70,12 +71,22 @@ class Config:
         """Validate configuration"""
         provider = Config.LLM_PROVIDER
         
-        # Validate based on selected provider
+        # Validate based on selected provide
         if provider == "groq":
             if not Config.API_KEY:
-                raise ValueError("API_KEY environment variable is not set. Get a free key at: https://console.groq.com")
+                raise ValueError("API_KEY is required for Groq provider")
+            if not Config.LLM_MODEL:
+                raise ValueError("LLM_MODEL is required for Groq provider")
+        elif provider == "confident":
+            if not Config.CONFIDENT_API_KEY:
+                raise ValueError("CONFIDENT_API_KEY is required for Confident provider")
+        elif provider == "deepseek":
+            if not Config.API_KEY:
+                raise ValueError("API_KEY is required for Deepseek provider")
+            if not Config.LLM_MODEL:
+                raise ValueError("LLM_MODEL is required for Deepseek provider") 
         else:
-            raise ValueError(f"Invalid LLM_PROVIDER: {provider}. Use: openai, groq, or ollama")
+            raise ValueError(f"Unsupported LLM_PROVIDER: {provider}")
 
         # Create required directories
         Config.DATA_DIR.mkdir(parents=True, exist_ok=True)
