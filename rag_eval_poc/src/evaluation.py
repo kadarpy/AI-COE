@@ -108,10 +108,6 @@ def get_deepeval_llm():
         model_name=config.LLM_MODEL
     )
 
-# =========================
-# PURE DEEPEVAL RUNNER
-# =========================
-
 def evaluate_test_case(
     test_id: str,
     question: str,
