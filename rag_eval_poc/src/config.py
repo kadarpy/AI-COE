@@ -127,13 +127,6 @@ class Config:
     # Feedback Loop Configuration
     ENABLE_FEEDBACK_LOOP = os.getenv("ENABLE_FEEDBACK_LOOP", "true").lower() in ("true", "1", "yes")
     
-    # Trained Model Configuration (NEW)
-    ENABLE_TRAINED_EVAL = os.getenv("ENABLE_TRAINED_EVAL", "true").lower() in ("true", "1", "yes")
-    MODEL_DIR = Path(os.getenv("MODEL_DIR", str(Path(__file__).parent.parent / "models")))
-    TRAINING_DATA_PATH = Path(os.getenv("TRAINING_DATA_PATH", str(Path(__file__).parent.parent / "training_data" / "training_data.jsonl")))
-    
-    # Retrieval metrics configuration
-    
     @staticmethod
     def validate():
         """Validate configuration"""

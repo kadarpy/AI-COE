@@ -62,9 +62,6 @@ class MLEvaluator:
         except Exception as e:
             logger.error(f"Failed to initialize CrossEncoder with '{model_name}': {e}")
             raise ValueError(f"Failed to load ML model '{model_name}'. Ensure it's a valid HuggingFace model: {e}")
-        except Exception as e:
-            logger.error(f"Failed to initialize CrossEncoder with '{model_name}': {e}")
-            raise ValueError(f"Failed to load ML model '{model_name}'. Ensure it's a valid HuggingFace model: {e}")
 
     def _tokenize(self, text: str) -> set:
         """
