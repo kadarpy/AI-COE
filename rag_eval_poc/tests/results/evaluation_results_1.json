@@ -10,22 +10,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -43,22 +43,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -76,22 +76,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -109,22 +109,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -142,22 +142,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -175,22 +175,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -208,22 +208,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -241,22 +241,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -274,22 +274,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -307,22 +307,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -340,22 +340,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -373,22 +373,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -406,22 +406,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -439,22 +439,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -472,22 +472,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -505,22 +505,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -538,22 +538,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -571,22 +571,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -604,22 +604,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -637,22 +637,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },
@@ -670,22 +670,22 @@
     "metrics": {
       "Hallucination": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "Faithfulness": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "AnswerRelevancy": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       },
       "ContextualRecall": {
         "score": null,
-        "error": "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment or pass `api_key` to GPTModel(...).",
+        "error": "OpenAI API key is not configured. Set API_KEY in your environment or pass `api_key` to GPTModel(...).",
         "passed": false
       }
     },

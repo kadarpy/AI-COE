@@ -114,9 +114,10 @@ class Reranker:
             scored_docs.sort(key=lambda x: x["score"], reverse=True)
             
             # Log reranking results
+            top_scores = [f"{d['score']:.3f}" for d in scored_docs[:3]]
             logger.info(
                 f"Reranked {len(documents)} documents. "
-                f"Top scores: {[f'{d['score']:.3f}' for d in scored_docs[:3]]}"
+                f"Top scores: {top_scores}"
             )
             
             # Apply top_k limit if specified

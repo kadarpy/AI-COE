@@ -1,0 +1,8 @@
+artifact_location: file:C:\AICOE\AI-COE\rag_eval_poc\mlruns/852460030114578937
+creation_time: 1775819043068
+experiment_id: '852460030114578937'
+last_update_time: 1775819043068
+lifecycle_stage: active
+name: rag_evaluation
+trace_location: null
+workspace: default

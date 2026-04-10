@@ -30,15 +30,15 @@ def get_llm():
             logger.debug("Using OpenAI LLM")
             from langchain_openai import ChatOpenAI
             
-            if not config.OPENAI_API_KEY:
-                raise ValueError("OPENAI_API_KEY not configured. Set OPENAI_API_KEY in .env or environment")
+            if not config.API_KEY:
+                raise ValueError("API_KEY not configured. Set API_KEY in .env or environment")
             if not config.OPENAI_MODEL:
                 raise ValueError("OPENAI_MODEL not configured. Set OPENAI_MODEL in .env or environment")
                 
             return ChatOpenAI(
                 model=config.OPENAI_MODEL,
                 temperature=config.TEMPERATURE,
-                api_key=config.OPENAI_API_KEY,
+                api_key=config.API_KEY,
                 max_retries=3
             )
         
@@ -78,15 +78,15 @@ def get_llm():
             logger.debug("Using Deepseek LLM")
             from langchain_deepseek import ChatDeepSeek
             
-            if not config.DEEPSEEK_API_KEY:
-                raise ValueError("DEEPSEEK_API_KEY not configured. Set DEEPSEEK_API_KEY in .env or environment")
+            if not config.API_KEY:
+                raise ValueError("API_KEY not configured. Set API_KEY in .env or environment")
             if not config.DEEPSEEK_MODEL:
                 raise ValueError("DEEPSEEK_MODEL not configured. Set DEEPSEEK_MODEL in .env or environment")
                 
             return ChatDeepSeek(
                 model=config.DEEPSEEK_MODEL,
                 temperature=config.TEMPERATURE,
-                api_key=config.DEEPSEEK_API_KEY,
+                api_key=config.API_KEY,
                 max_retries=3
             )
         
@@ -296,7 +296,7 @@ class RAGChain:
         # STEP 3: PROMPT WITH BALANCED INSTRUCTIONS
         logger.debug("Creating prompt with RAG instructions...")
         prompt_template = ChatPromptTemplate.from_template(
-            """You are a RAG assistant chatbot. Your role is to answer questions using ONLY information from provided documents.
+            """
 
 CONTEXT:
 {context}
@@ -305,19 +305,19 @@ QUESTION:
 {question}
 
 INSTRUCTIONS:
-
-1. Answer ONLY using explicitly stated information in the documents
-2. If the answer is not in the documents, respond: "The documents do not contain this information."
-3. Do NOT infer, speculate, or provide information from training data
-4. Do NOT include assumptions beyond what is written
-5. Keep answers concise and direct
-6. Provide brief explanations ONLY if the question explicitly asks for "explain", "why", or "how"
-7. Do NOT include document names, page numbers, or citations unless explicitly asked
-8. If asked for sources, provide ONLY the document names without additional commentary
-
-Answer concisely based on the context provided."""
+"""
         )
+# You are a RAG assistant chatbot. Your role is to answer questions using ONLY information from provided documents.
+# 1. Answer ONLY using explicitly stated information in the documents
+# 2. If the answer is not in the documents, respond: "The documents do not contain this information."
+# 3. Do NOT infer, speculate, or provide information from training data
+# 4. Do NOT include assumptions beyond what is written
+# 5. Keep answers concise and direct
+# 6. Provide brief explanations ONLY if the question explicitly asks for "explain", "why", or "how"
+# 7. Do NOT include document names, page numbers, or citations unless explicitly asked
+# 8. If asked for sources, provide ONLY the document names without additional commentary
 
+# Answer concisely based on the context provided.
         # STEP 4: LLM GENERATION (generation happens AFTER retrieval with context)
         logger.debug("Generating answer with LLM using retrieved context...")
         chain = (

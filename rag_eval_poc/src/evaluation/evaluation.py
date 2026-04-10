@@ -26,6 +26,7 @@ import time
 from pathlib import Path
 from typing import Dict, List, Any, Tuple, Optional
 from datetime import datetime
+import portalocker
 import streamlit as st
 import re
 import yaml
@@ -660,8 +661,6 @@ class UIEvaluator:
             context: Retrieved context strings
             labels: Optional ground truth labels from test case
         """
-        import fcntl
-        
         try:
             training_data_path = Path(config.TRAINING_DATA_PATH)
             training_data_path.parent.mkdir(parents=True, exist_ok=True)
@@ -691,15 +690,15 @@ class UIEvaluator:
             # Thread-safe append: use file locking to prevent concurrent write corruption
             # On Windows, fcntl may not work - use try/except fallback
             try:
-                with open(training_data_path, 'a') as f:
-                    # Try to acquire exclusive lock (Unix-like systems)
+                import portalocker
+
+                with open(training_data_path, "a") as f:
+                    portalocker.lock(f, portalocker.LOCK_EX)
                     try:
-                        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
                         f.write(json.dumps(training_record) + "\n")
-                        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
-                    except (AttributeError, OSError):
-                        # Windows or system without fcntl - just write (Streamlit mostly single-threaded)
-                        f.write(json.dumps(training_record) + "\n")
+                        f.flush()
+                    finally:
+                        portalocker.unlock(f)
             except Exception as write_err:
                 logger.error(f"Failed to write to training data file: {write_err}")
                 raise

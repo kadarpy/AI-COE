@@ -223,3 +223,6 @@ Document everything using the AICOE POC Output Template. Focus on:
 | Findings write-up              | Clear conclusions on evaluation value                        |
 | Demo ready                     | Can show passing, failing, and "sneaky" cases live           |
 | POC output document            | Completed using AICOE POC Output Template                    |
+
+
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned

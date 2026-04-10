@@ -33,7 +33,7 @@ class Config:
     LLM_MODEL = os.getenv("LLM_MODEL", "mixtral-8x7b-32768")  # Default Groq model
     
     # OpenAI Configuration
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+    API_KEY = os.getenv("API_KEY", "")
     OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4-turbo")
     
     # Ollama Configuration
@@ -41,7 +41,7 @@ class Config:
     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral")
     
     # Deepseek Configuration
-    DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+    API_KEY = os.getenv("API_KEY", "")
     DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
     
     # Confident Configuration (optional)
@@ -140,8 +140,8 @@ class Config:
                 raise ValueError("LLM_MODEL is required for Groq provider. Set LLM_MODEL in .env or environment")
                 
         elif provider == "openai":
-            if not Config.OPENAI_API_KEY:
-                raise ValueError("OPENAI_API_KEY is required for OpenAI provider. Set OPENAI_API_KEY in .env or environment")
+            if not Config.API_KEY:
+                raise ValueError("API_KEY is required for OpenAI provider. Set API_KEY in .env or environment")
             if not Config.OPENAI_MODEL:
                 raise ValueError("OPENAI_MODEL is required for OpenAI provider. Set OPENAI_MODEL in .env or environment")
                 
@@ -152,8 +152,8 @@ class Config:
                 raise ValueError("OLLAMA_MODEL is required for Ollama provider. Set OLLAMA_MODEL in .env or environment")
                 
         elif provider == "deepseek":
-            if not Config.DEEPSEEK_API_KEY:
-                raise ValueError("DEEPSEEK_API_KEY is required for Deepseek provider. Set DEEPSEEK_API_KEY in .env or environment")
+            if not Config.API_KEY:
+                raise ValueError("API_KEY is required for Deepseek provider. Set API_KEY in .env or environment")
             if not Config.DEEPSEEK_MODEL:
                 raise ValueError("DEEPSEEK_MODEL is required for Deepseek provider. Set DEEPSEEK_MODEL in .env or environment")
         

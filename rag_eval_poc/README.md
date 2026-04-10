@@ -85,7 +85,7 @@ API_KEY=your_API_KEY_here
 LLM_MODEL=llama-3.3-70b-versatile
 
 # OR for OpenAI:
-# OPENAI_API_KEY=your_openai_key_here
+# API_KEY=your_openai_key_here
 ```
 
 Get a free Groq API key at [console.groq.com](https://console.groq.com)
@@ -148,7 +148,7 @@ API_KEY=your_key_here                  # For Groq (free)
 LLM_MODEL=llama-3.3-70b-versatile          # Groq model selection
 
 # OpenAI (alternative)
-OPENAI_API_KEY=your_key_here                # For OpenAI API
+API_KEY=your_key_here                # For OpenAI API
 OPENAI_API_BASE=https://api.openai.com/v1   # Optional custom endpoint
 
 # Optional
@@ -430,7 +430,7 @@ LLM_MODEL=llama-3.3-70b-versatile
 
 ```env
 LLM_PROVIDER=openai
-OPENAI_API_KEY=your_key
+API_KEY=your_key
 ```
 
 ### Switching Providers

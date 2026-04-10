@@ -54,18 +54,7 @@ def display_configuration_error(error_msg: str):
     st.markdown(f"2. Ensure you have set the following for your provider ({config.LLM_PROVIDER.upper()}):")
     
     provider = config.LLM_PROVIDER.lower()
-    if provider == "groq":
-        st.markdown("   - `API_KEY`: Your Groq API key")
-        st.markdown("   - `LLM_MODEL`: Model name (e.g., mixtral-8x7b-32768)")
-    elif provider == "openai":
-        st.markdown("   - `OPENAI_API_KEY`: Your OpenAI API key")
-        st.markdown("   - `OPENAI_MODEL`: Model name (e.g., gpt-4-turbo)")
-    elif provider == "ollama":
-        st.markdown("   - `OLLAMA_BASE_URL`: Ollama server URL (e.g., http://localhost:11434)")
-        st.markdown("   - `OLLAMA_MODEL`: Model name")
-    elif provider == "deepseek":
-        st.markdown("   - `DEEPSEEK_API_KEY`: Your Deepseek API key")
-        st.markdown("   - `DEEPSEEK_MODEL`: Model name")
+    st.markdown(f"   - `API_KEY`: Your {provider} API key")
     
     st.markdown("3. Restart the application")
     st.stop()
