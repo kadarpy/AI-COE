@@ -821,17 +821,30 @@ def display_single_test_evaluation():
                 status_bg = "orange"
 
             # Prominent final score display
-            col_status, col_score, col_completeness = st.columns(3)
+            category = selected_test.get("category", "").lower()
 
-            with col_status:
-                st.metric(f"{status_color} Status", status)
+            # For UNANSWERABLE: don't show completeness (it's not applicable)
+            if category == "unanswerable":
+                col_status, col_score = st.columns(2)
 
-            with col_score:
-                st.metric("📊 Final Score", f"{final_score:.3f}")
+                with col_status:
+                    st.metric(f"{status_color} Status", status)
 
-            with col_completeness:
+                with col_score:
+                    st.metric("📊 Final Score", f"{final_score:.3f}")
+            else:
+                # For ANSWERABLE/PARTIAL: show completeness factor
                 completeness = result.get("completeness_score", 1.0)
-                st.metric("✓ Completeness", f"{completeness:.3f}")
+                col_status, col_score, col_completeness = st.columns(3)
+
+                with col_status:
+                    st.metric(f"{status_color} Status", status)
+
+                with col_score:
+                    st.metric("📊 Final Score", f"{final_score:.3f}")
+
+                with col_completeness:
+                    st.metric("✓ Completeness", f"{completeness:.3f}")
 
             # Show actual answer
             st.write("---")
@@ -872,11 +885,14 @@ def display_single_test_evaluation():
 
             with col_factor:
                 st.write("**Adjustments:**")
-                st.write(f"  • Completeness factor: {completeness:.3f}")
-                if selected_test.get("category", "").lower() != "unanswerable":
-                    st.write(f"  • Weighted aggregate × completeness = final")
+                if category == "unanswerable":
+                    st.write(f"  • Category: UNANSWERABLE")
+                    st.write(f"  • Scoring: Refusal correctness based")
+                    st.write(f"  • No completeness factor applied")
                 else:
-                    st.write(f"  • Category-aware: unanswerable evaluation")
+                    st.write(f"  • Completeness factor: {completeness:.3f}")
+                    st.write(f"  • Weighted aggregate × completeness")
+                    st.write(f"  • = final score")
 
             # ✅ PRODUCTION UI: Show raw metrics as secondary details
             st.write("---")
