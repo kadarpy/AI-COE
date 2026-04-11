@@ -1,5 +1,6 @@
 """
 Configuration module for RAG Bot
+Fully dynamic - all settings loaded from .env file
 """
 import os
 from pathlib import Path
@@ -14,9 +15,9 @@ else:
 
 
 class Config:
-    """Main configuration class"""
+    """Main configuration class - dynamically loaded from environment variables"""
 
-    # Paths
+    # ===================== PATHS CONFIGURATION =====================
     BASE_DIR = Path(__file__).parent
     PROJECT_ROOT = BASE_DIR.parent
     DATA_DIR = BASE_DIR / "data"
@@ -24,64 +25,59 @@ class Config:
     CHROMA_DB_DIR = BASE_DIR / "chroma_db"
     EVALUATION_DIR = PROJECT_ROOT / "tests" / "evaluation"
     DEFAULT_DOCUMENT_PATH = DATA_DIR / "document.txt"
+    ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md"}
 
-    # LLM Provider Configuration (supports multiple providers)
-    LLM_PROVIDER = (os.getenv("LLM_PROVIDER") or "").lower()
-    
-    # Groq Configuration (FREE - RECOMMENDED)
-    API_KEY = os.getenv("API_KEY", "")
+    # ===================== LLM PROVIDER CONFIGURATION =====================
+    LLM_PROVIDER = os.getenv("LLM_PROVIDER").lower()
     LLM_MODEL = os.getenv("LLM_MODEL")
-    CONFIDENT_API_KEY = os.getenv("CONFIDENT_API_KEY", "")
-    BASE_URL = os.getenv("BASE_URL", "")
-    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "")
-    
-    # Temperature for all providers
+    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL")
+    API_KEY = os.getenv("API_KEY")
+    BASE_URL = os.getenv("BASE_URL")
+    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL")
+
+    # ===================== MODEL BEHAVIOR CONFIGURATION =====================
     TEMPERATURE = float(os.getenv("TEMPERATURE"))
     EVAL_TEMPERATURE = float(os.getenv("EVAL_TEMPERATURE"))
 
-    # Document Loading Configuration
+    # ===================== DOCUMENT PROCESSING CONFIGURATION =====================
     DOC_CHUNK_SIZE = int(os.getenv("DOC_CHUNK_SIZE"))
     DOC_CHUNK_OVERLAP = int(os.getenv("DOC_CHUNK_OVERLAP"))
-    ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md"}
 
-    # Vector Store Configuration
-    VECTOR_STORE_TYPE = str(os.getenv("VECTOR_STORE_TYPE").lower())
+    # ===================== VECTOR STORE CONFIGURATION =====================
+    VECTOR_STORE_TYPE = os.getenv("VECTOR_STORE_TYPE").lower()
+
+    # ===================== RETRIEVER CONFIGURATION =====================
     RETRIEVER_K = int(os.getenv("RETRIEVER_K"))
+    RETRIEVER_FETCH_K = int(os.getenv("RETRIEVER_FETCH_K"))
+    RERANK_TOP_K = int(os.getenv("RERANK_TOP_K"))
 
-    # Validation Configuration
+    # ===================== VALIDATION CONSTRAINTS =====================
     MIN_QUESTION_LENGTH = int(os.getenv("MIN_QUESTION_LENGTH"))
     MAX_QUESTION_LENGTH = int(os.getenv("MAX_QUESTION_LENGTH"))
     MIN_ANSWER_LENGTH = int(os.getenv("MIN_ANSWER_LENGTH"))
     MAX_ANSWER_LENGTH = int(os.getenv("MAX_ANSWER_LENGTH"))
 
-    # Retrieval tuning
-    RETRIEVER_FETCH_K = int(os.getenv("RETRIEVER_FETCH_K"))  # Number of documents to fetch before final selection
-    RERANK_TOP_K = int(os.getenv("RERANK_TOP_K"))  # Number of top documents to use for final context (strict mode)
-
-    # Strict mode
+    # ===================== CONTEXT & RESPONSE CONFIGURATION =====================
     STRICT_CONTEXT_MODE = os.getenv("STRICT_CONTEXT_MODE")
 
-    # Logging Configuration
-    LOG_LEVEL = os.getenv("LOG_LEVEL").upper()
+    # ===================== LOGGING CONFIGURATION =====================
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
     LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-    # Evaluation Configuration
+    # ===================== EVALUATION CONFIGURATION =====================
     EVAL_TEST_CASES_PATH = EVALUATION_DIR / "test_cases.yaml"
-    
+
     @staticmethod
     def validate():
-        """Validate configuration"""
+        """Validate configuration based on selected LLM provider"""
         provider = Config.LLM_PROVIDER
-        
-        # Validate based on selected provide
+
+        # Validate provider and required fields
         if provider == "groq":
             if not Config.API_KEY:
                 raise ValueError("API_KEY is required for Groq provider")
             if not Config.LLM_MODEL:
                 raise ValueError("LLM_MODEL is required for Groq provider")
-        elif provider == "confident":
-            if not Config.CONFIDENT_API_KEY:
-                raise ValueError("CONFIDENT_API_KEY is required for Confident provider")
         elif provider == "deepseek":
             if not Config.API_KEY:
                 raise ValueError("API_KEY is required for Deepseek provider")
@@ -89,14 +85,14 @@ class Config:
                 raise ValueError("LLM_MODEL is required for Deepseek provider")
         elif provider == "ollama":
             if not Config.OLLAMA_BASE_URL:
-                print("OLLAMA_BASE_URL is required for Ollama provider")
+                raise ValueError("OLLAMA_BASE_URL is required for Ollama provider")
             if not Config.LLM_MODEL:
                 raise ValueError("LLM_MODEL is required for Ollama provider")
         elif provider == "openai":
             if not Config.API_KEY:
                 raise ValueError("API_KEY is required for OpenAI provider")
             if not Config.LLM_MODEL:
-                raise ValueError("LLM_MODEL is required for OpenAI provider") 
+                raise ValueError("LLM_MODEL is required for OpenAI provider")
         else:
             raise ValueError(f"Unsupported LLM_PROVIDER: {provider}")
 

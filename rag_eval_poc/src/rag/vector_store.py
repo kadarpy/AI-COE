@@ -116,8 +116,11 @@ def get_embeddings():
     try:
         if provider == "ollama":
             from langchain_community.embeddings import OllamaEmbeddings
-            logger.info("Using Ollama embeddings")
-            return OllamaEmbeddings(model="nomic-embed-text")
+            logger.info(f"Using Ollama embeddings with model: {config.EMBEDDING_MODEL}")
+            return OllamaEmbeddings(
+                model=config.EMBEDDING_MODEL,
+                base_url=config.OLLAMA_BASE_URL
+            )
 
         else:
             from langchain.embeddings import HuggingFaceEmbeddings

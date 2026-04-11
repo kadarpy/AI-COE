@@ -381,10 +381,10 @@ class UIEvaluator:
     @staticmethod
     def classify_failure(metrics: dict, category: str, is_refusal: bool) -> dict:
 
-        hallucination = metrics.get("Hallucination", {}).get("score", 0)
-        relevancy = metrics.get("AnswerRelevancy", {}).get("score", 0)
-        recall = metrics.get("ContextualRecall", {}).get("score", 0)
-        faithfulness = metrics.get("Faithfulness", {}).get("score", 0)
+        hallucination = metrics.get("Hallucination", {}).get("score") or 0
+        relevancy = metrics.get("AnswerRelevancy", {}).get("score") or 0
+        recall = metrics.get("ContextualRecall", {}).get("score") or 0
+        faithfulness = metrics.get("Faithfulness", {}).get("score") or 0
 
         # =========================
         # UNANSWERABLE CASE
@@ -412,6 +412,7 @@ class UIEvaluator:
 
         return {"type": "correct", "severity": "none"}
     
+    @staticmethod
     def compute_final_score(metrics: dict) -> float:
 
         weights = {
@@ -437,6 +438,7 @@ class UIEvaluator:
 
         return round(score, 3)
     
+    @staticmethod
     def compute_pass_fail(final_score: float, failure_type: str) -> str:
 
         # Hard fail conditions

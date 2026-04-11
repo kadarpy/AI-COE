@@ -1,0 +1,59 @@
+{
+  "test_id": 11,
+  "category": "PARTIAL",
+  "difficulty": "Hard",
+  "question": "Compare physical and economic water scarcity",
+  "expected_answer": "Physical water scarcity refers to lack of water resources, while economic water scarcity refers to lack of infrastructure. Examples include the Middle East and Sub-Saharan Africa.\n",
+  "actual_answer": "Physical water scarcity occurs when natural water resources are insufficient to meet demand, commonly found in arid regions. Economic water scarcity occurs when water exists but infrastructure or governance is inadequate.",
+  "retrieval_context": [
+    "Water-intensive sectors: textiles, energy production, manufacturing\n3.4 Climate Change\nAlters precipitation patterns\nIncreases frequency of droughts and floods\nAccelerates glacier melt, impacting long-term water supply\n3.5 Pollution\nIndustrial discharge, agricultural runoff (fertilizers, pesticides)\nContamination of rivers and groundwater\nLeads to reduced potable water availability\n4. Types of Water Scarcity\n4.1 Physical Water Scarcity",
+    "The global freshwater crisis is a multidimensional challenge involving environmental, economic, and political factors. Sustainable management requires a combination of technological innovation, policy reform, and behavioral change. Without intervention, water scarcity will increasingly constrain economic development, food security, and human health.",
+    "Occurs when natural water resources are insufficient to meet demand.\n\nCommon in arid regions (e.g., Middle East, North Africa)\n4.2 Economic Water Scarcity\n\nOccurs when water exists but infrastructure or governance is inadequate."
+  ],
+  "num_retrieved_docs": 3,
+  "metrics": {
+    "Hallucination": {
+      "score": 0.0,
+      "reason": "The score is 0.00 because the actual output does not contradict the provided context and agrees with it on various dimensions of the global freshwater crisis, including the occurrence of physical and economic water scarcity."
+    },
+    "Faithfulness": {
+      "score": 1.0,
+      "reason": "The score is 1.00 because there are no contradictions found, indicating a perfect alignment between the actual output and the retrieval context."
+    },
+    "AnswerRelevancy": {
+      "score": 1.0,
+      "reason": "The score is 1.00 because the output perfectly addresses the comparison between physical and economic water scarcity without any irrelevant statements, demonstrating a thorough understanding of the topic."
+    },
+    "ContextualRecall": {
+      "score": 1.0,
+      "reason": "The score is 1.00 because the entire expected output can be perfectly attributed to the 3rd node in the retrieval context, which provides a clear distinction between physical and economic water scarcity, along with relevant examples such as the Middle East."
+    },
+    "Completeness": {
+      "score": 0.4117647058823529,
+      "reason": "Keyword coverage based completeness"
+    },
+    "ContextPresence": {
+      "score": 1.0,
+      "reason": "Whether any context was retrieved"
+    },
+    "FinalScore": {
+      "score": 1.0,
+      "reason": "Weighted aggregate score"
+    },
+    "EvaluationStatus": {
+      "score": 1.0,
+      "label": "PASS"
+    },
+    "FailureType": {
+      "type": "correct",
+      "severity": "none"
+    }
+  },
+  "timestamp": "2026-04-11T20:17:11.580975",
+  "failure_analysis": {
+    "failure_type": "correct",
+    "reason": "correct triggered",
+    "metric_alignment": "derived from metrics",
+    "notes": "Severity: none"
+  }
+}
