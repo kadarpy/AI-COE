@@ -800,39 +800,118 @@ def display_single_test_evaluation():
         
         # Display result
         st.write("---")
-        st.subheader("Evaluation Results")
-        
+        st.subheader("🎯 Evaluation Results")
+
         if "error" in result and result["error"]:
-            st.error(f" Error: {result['error']}")
+            st.error(f"❌ Error: {result['error']}")
         else:
+            # ✅ PRODUCTION UI: Show final score FIRST and PROMINENTLY
+            status = result.get("result", "?").upper()
+            final_score = result.get("final_score", 0.0)
+
+            # Status indicator with color
+            if status == "PASS":
+                status_color = "🟢"
+                status_bg = "green"
+            elif status == "FAIL":
+                status_color = "🔴"
+                status_bg = "red"
+            else:  # WARNING
+                status_color = "🟡"
+                status_bg = "orange"
+
+            # Prominent final score display
+            col_status, col_score, col_completeness = st.columns(3)
+
+            with col_status:
+                st.metric(f"{status_color} Status", status)
+
+            with col_score:
+                st.metric("📊 Final Score", f"{final_score:.3f}")
+
+            with col_completeness:
+                completeness = result.get("completeness_score", 1.0)
+                st.metric("✓ Completeness", f"{completeness:.3f}")
+
             # Show actual answer
-            st.write(f"**Actual Answer:** {result['actual_answer']}")
-            
-            # Show metrics
             st.write("---")
-            st.write("**Metric Scores:**")
-            
-            cols = st.columns(2)
-            metrics = result.get("metrics", {})
-            
-            for idx, (metric_name, metric_data) in enumerate(metrics.items()):
-                with cols[idx % 2]:
+            st.write(f"**📝 Actual Answer:** {result['actual_answer']}")
 
+            # ✅ PRODUCTION UI: Show interpretation reasoning
+            st.write("---")
+            st.subheader("📋 Evaluation Reasoning")
+
+            reasoning = result.get("reasoning", [])
+            for reason in reasoning:
+                st.write(f"→ {reason}")
+
+            # Show is_refusal status
+            is_refusal = result.get("is_refusal", False)
+            if selected_test.get("category", "").lower() == "unanswerable":
+                st.write(f"🔍 Refusal Detection: {'✅ Detected (LLM-based)' if is_refusal else '❌ Not detected'}")
+
+            # ✅ PRODUCTION UI: Show score breakdown
+            st.write("---")
+            st.subheader("📈 Score Breakdown")
+
+            col_raw, col_factor = st.columns(2)
+
+            with col_raw:
+                st.write("**Raw Score (DeepEval metrics):**")
+                metrics = result.get("metrics", {})
+                for metric_name, metric_data in metrics.items():
                     score = metric_data.get("score")
-
+                    applied = metric_data.get("applied", True)
                     if score is not None:
-                        display_metric_card(
-                            metric_name,
-                            score
-                        )
+                        if applied:
+                            st.write(f"  • {metric_name}: {score:.3f}")
+                        else:
+                            st.write(f"  • {metric_name}: — (not applicable)")
                     else:
-                        st.warning(f"{metric_name}: No score")
-            
+                        st.write(f"  • {metric_name}: ✗ (error)")
+
+            with col_factor:
+                st.write("**Adjustments:**")
+                st.write(f"  • Completeness factor: {completeness:.3f}")
+                if selected_test.get("category", "").lower() != "unanswerable":
+                    st.write(f"  • Weighted aggregate × completeness = final")
+                else:
+                    st.write(f"  • Category-aware: unanswerable evaluation")
+
+            # ✅ PRODUCTION UI: Show raw metrics as secondary details
+            st.write("---")
+            st.subheader("📊 Detailed Metrics")
+
+            col1, col2 = st.columns(2)
+            metric_count = 0
+            for metric_name, metric_data in metrics.items():
+                with col1 if metric_count % 2 == 0 else col2:
+                    score = metric_data.get("score")
+                    applied = metric_data.get("applied", True)
+
+                    if score is not None and applied:
+                        # Normalize score for display
+                        if metric_name.lower() == "hallucination":
+                            # Invert hallucination for display (higher is worse)
+                            display_score = 1 - score
+                            st.write(f"**{metric_name}** (inverted): {display_score:.3f}")
+                        else:
+                            st.write(f"**{metric_name}**: {score:.3f}")
+                    elif applied:
+                        st.warning(f"**{metric_name}**: Error (no score)")
+                    metric_count += 1
+
             # Show retrieved context
             st.write("---")
-            with st.expander("Retrieved Context"):
-                st.text_area("Context", "\n\n".join(result.get("retrieval_context", [])), 
-                           height=200, disabled=True)
+            with st.expander("📄 Retrieved Context Details"):
+                context = result.get("retrieval_context", [])
+                if context:
+                    st.write(f"Retrieved {len(context)} document(s):")
+                    for i, doc in enumerate(context, 1):
+                        st.write(f"\n**Document {i}:**")
+                        st.text_area(f"doc_{i}", doc, height=100, disabled=True, key=f"context_{i}")
+                else:
+                    st.info("No context retrieved for this query")
 
 
 def display_batch_evaluation():
