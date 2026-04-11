@@ -20,10 +20,10 @@ class Config:
     BASE_DIR = Path(__file__).parent
     PROJECT_ROOT = BASE_DIR.parent
     DATA_DIR = BASE_DIR / "data"
-    DOCUMENTS_DIR = DATA_DIR / "documents"
+    DOCUMENTS_DIR = DATA_DIR
     CHROMA_DB_DIR = BASE_DIR / "chroma_db"
     EVALUATION_DIR = PROJECT_ROOT / "tests" / "evaluation"
-    DEFAULT_DOCUMENT_PATH = DOCUMENTS_DIR / "document.txt"
+    DEFAULT_DOCUMENT_PATH = DATA_DIR / "document.txt"
 
     # LLM Provider Configuration (supports multiple providers)
     LLM_PROVIDER = os.getenv("LLM_PROVIDER").lower()
@@ -38,8 +38,8 @@ class Config:
     EVAL_TEMPERATURE = float(os.getenv("EVAL_TEMPERATURE"))
 
     # Document Loading Configuration
-    PDF_CHUNK_SIZE = int(os.getenv("PDF_CHUNK_SIZE"))
-    PDF_CHUNK_OVERLAP = int(os.getenv("PDF_CHUNK_OVERLAP"))
+    DOC_CHUNK_SIZE = int(os.getenv("DOC_CHUNK_SIZE"))
+    DOC_CHUNK_OVERLAP = int(os.getenv("DOC_CHUNK_OVERLAP"))
     ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md"}
 
     # Vector Store Configuration

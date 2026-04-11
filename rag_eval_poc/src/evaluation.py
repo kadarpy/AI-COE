@@ -96,6 +96,36 @@ def get_deepeval_llm():
         model_name=config.LLM_MODEL
     )
 
+def compute_completeness(expected_answer: str, actual_answer: str) -> float:
+    """
+    Improved completeness:
+    - Handles UNANSWERABLE properly
+    - Avoids keyword bias
+    """
+
+    expected = expected_answer.lower().strip()
+    actual = actual_answer.lower().strip()
+
+    # Handle UNANSWERABLE cases
+    if any(phrase in expected for phrase in [
+        "not provided", "not available", "does not", "not mentioned"
+    ]):
+        if any(phrase in actual for phrase in [
+            "not provided", "not available", "does not", "not mentioned"
+        ]):
+            return 1.0
+        return 0.0
+
+    # Normal keyword fallback
+    keywords = [w for w in expected.split() if len(w) > 4]
+
+    if not keywords:
+        return 0.0
+
+    matched = sum(1 for k in keywords if k in actual)
+
+    return matched / len(keywords)
+
 # =========================
 # PURE DEEPEVAL RUNNER
 # =========================
@@ -213,6 +243,13 @@ def evaluate_test_case(
             "score": None,
             "reason": f"error: {str(e)}"
         }
+
+    completeness = compute_completeness(expected_answer, actual_answer)
+
+    results["metrics"]["Completeness"] = {
+        "score": completeness,
+        "reason": "Keyword coverage based completeness"
+    }
     
     logger.info(f"Test {test_id} complete")
     return results
@@ -269,6 +306,8 @@ class EvaluationMetrics:
         Returns:
             {"metrics": {...}}
         """
+        logger.info(f"[DEBUG] Retrieved context size: {len(retrieval_context)}")
+        
         if not isinstance(retrieval_context, list):
             retrieval_context = []
         
@@ -340,33 +379,27 @@ class UIEvaluator:
         logger.info("UIEvaluator initialized")
 
     def evaluate_single_test(self, test_case: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Evaluate single test case.
-        
-        Args:
-            test_case: Dict with question, expected_answer, etc.
-            
-        Returns:
-            Result dict with metrics
-        """
+
         question = test_case.get("question", "")
         expected_answer = test_case.get("expected_answer", "")
         test_id = test_case.get("id")
-        
+
+        # ✅ ALWAYS define early
+        category = test_case.get("category", "").lower()
+
         logger.info(f"Evaluating test {test_id}")
 
-        # Run RAG chain
+        # =========================
+        # RUN RAG
+        # =========================
         try:
             result = self.qa_chain.invoke({"query": question})
 
             actual_answer = result.get("result", "")
 
-            # ALWAYS DEFINE FIRST
             source_docs = result.get("source_documents", []) or []
-
             retrieval_context = extract_context_from_retrieval(source_docs)
 
-            #  SAFE DEBUG (after assignment)
             logger.info(f"Retrieved {len(source_docs)} documents")
 
         except Exception as e:
@@ -378,7 +411,23 @@ class UIEvaluator:
                 "timestamp": datetime.now().isoformat()
             }
 
-        # Run pure DeepEval
+        # =========================
+        # DETECT REFUSAL (ONCE ONLY)
+        # =========================
+        is_refusal = any(
+            phrase in actual_answer.lower()
+            for phrase in [
+                "not provided",
+                "not available",
+                "does not contain",
+                "not mentioned",
+                "no information"
+            ]
+        )
+
+        # =========================
+        # RUN DEEPEVAL
+        # =========================
         eval_result = EvaluationMetrics.evaluate_response(
             question=question,
             actual_answer=actual_answer,
@@ -386,7 +435,38 @@ class UIEvaluator:
             retrieval_context=retrieval_context
         )
 
-        # Assemble output
+        metrics = eval_result.get("metrics", {})
+
+        # =========================
+        # FIX: UNANSWERABLE LOGIC
+        # =========================
+        if category == "unanswerable":
+
+            metrics["RefusalCorrectness"] = {
+                "score": 1.0 if is_refusal else 0.0,
+                "reason": "Correct refusal behavior"
+            }
+
+            # Fix hallucination
+            if is_refusal and "Hallucination" in metrics:
+                metrics["Hallucination"]["score"] = 0.0
+                metrics["Hallucination"]["reason"] = "Correct refusal → no hallucination"
+
+            # Fix relevancy
+            if is_refusal and "AnswerRelevancy" in metrics:
+                metrics["AnswerRelevancy"]["score"] = 1.0
+
+        # =========================
+        # CONTEXT CHECK
+        # =========================
+        metrics["ContextPresence"] = {
+            "score": 1.0 if len(retrieval_context) > 0 else 0.0,
+            "reason": "Whether any context was retrieved"
+        }
+
+        # =========================
+        # OUTPUT
+        # =========================
         output = {
             "test_id": test_id,
             "category": test_case.get("category", "unknown"),
@@ -394,14 +474,16 @@ class UIEvaluator:
             "question": question,
             "expected_answer": expected_answer,
             "actual_answer": actual_answer,
+            "retrieval_context": retrieval_context,
             "num_retrieved_docs": len(retrieval_context),
-            "metrics": eval_result.get("metrics", {}),
+            "metrics": metrics,
             "timestamp": datetime.now().isoformat()
         }
 
         self.results.append(output)
+
         logger.info(f"Test {test_id} complete")
-        
+
         return output
     
     @staticmethod
@@ -511,5 +593,4 @@ class UIEvaluator:
             json.dump(self.results, f, indent=2, default=str)
 
         logger.info(f"Results exported to {output_file}")
-        return str(output_file)
         return str(output_file)

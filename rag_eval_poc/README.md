@@ -161,8 +161,8 @@ Edit [src/config.py](src/config.py) for system settings:
 
 ```python
 # Document Processing
-PDF_CHUNK_SIZE = 800          # Characters per chunk
-PDF_CHUNK_OVERLAP = 100       # Character overlap between chunks
+DOC_CHUNK_SIZE = 800          # Characters per chunk
+DOC_CHUNK_OVERLAP = 100       # Character overlap between chunks
 RETRIEVER_K = 1               # Number of documents to retrieve
 
 # Vector Store

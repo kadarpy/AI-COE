@@ -277,8 +277,8 @@ def test_config_has_defaults():
         required_attrs = [
             'DEFAULT_DOCUMENT_PATH',
             'EVAL_TEST_CASES_PATH',
-            'PDF_CHUNK_SIZE',
-            'PDF_CHUNK_OVERLAP',
+            'DOC_CHUNK_SIZE',
+            'DOC_CHUNK_OVERLAP',
             'RETRIEVER_K',
             'LLM_MODEL',
             'API_KEY'

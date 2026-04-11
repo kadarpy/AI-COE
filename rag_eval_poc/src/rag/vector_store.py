@@ -1,10 +1,12 @@
 """
 Vector store management module for RAG Bot
 """
+import warnings
+warnings.filterwarnings("ignore")
 import logging
 import numpy as np
 from pathlib import Path
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 from config import config
 
 logger = logging.getLogger(__name__)
@@ -18,8 +20,10 @@ def get_embeddings():
         Embeddings instance
     """
     try:
-        # Try to use HuggingFace sentence-transformers (recommended, 384 dims)
-        from langchain_huggingface import HuggingFaceEmbeddings
+        try:
+            from langchain_huggingface import HuggingFaceEmbeddings
+        except:
+            raise ImportError("Skip HF embeddings")
         
         logger.info("Using HuggingFace sentence-transformers embeddings (384 dimensions)")
         embeddings = HuggingFaceEmbeddings(
@@ -140,8 +144,6 @@ def build_vector_store(chunks):
         logger.info("Adding documents to vector store...")
         vectordb.add_documents(chunks)
 
-        # Persist DB
-        vectordb.persist()
 
         logger.info(f"{len(chunks)} documents successfully stored in vector DB")
 

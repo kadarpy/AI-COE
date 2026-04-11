@@ -54,11 +54,11 @@ def load_documents(file_path: str):
         logger.info(f"Successfully loaded {len(docs)} documents from {file_extension} file")
 
         # Split into chunks
-        logger.debug(f"Splitting documents with chunk_size={config.PDF_CHUNK_SIZE}, "
-                    f"overlap={config.PDF_CHUNK_OVERLAP}")
+        logger.debug(f"Splitting documents with chunk_size={config.DOC_CHUNK_SIZE}, "
+                    f"overlap={config.DOC_CHUNK_OVERLAP}")
         splitter = RecursiveCharacterTextSplitter(
-            chunk_size=config.PDF_CHUNK_SIZE,
-            chunk_overlap=config.PDF_CHUNK_OVERLAP,
+            chunk_size=config.DOC_CHUNK_SIZE,
+            chunk_overlap=config.DOC_CHUNK_OVERLAP,
             separators=["\n\n", "\n", " ", ""]
         )
 

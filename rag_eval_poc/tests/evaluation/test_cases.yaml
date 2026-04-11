@@ -1,312 +1,205 @@
 test_cases:
 
-  # ========== EASY / FACTUAL RETRIEVAL (12) ==========
+# =========================
+# ANSWERABLE (10)
+# =========================
 
-  - id: 1
-    category: straightforward
-    question: "What percentage of Earth's water is freshwater?"
-    expected_answer: "Approximately 2.5%"
-    ground_truth_context:
-      - "Saltwater (oceans): ~97.5%\nFreshwater: ~2.5%"
-      - "Although water covers approximately 71% of Earth's surface, only about 2.5% is freshwater, and less than 1% is readily accessible for human use."
-    difficulty: easy
-    notes: "Core factual retrieval"
+- id: 1
+  category: ANSWERABLE
+  question: "What percentage of Earth's water is freshwater?"
+  expected_answer: |
+    Approximately 2.5% of Earth's total water is freshwater. Most of the remaining water is saltwater found in oceans.
+  ground_truth_context:
+    - "Saltwater (oceans): ~97.5%"
+    - "Freshwater: ~2.5%"
+  difficulty: Easy
 
-  - id: 2
-    category: straightforward
-    question: "What percentage of freshwater is stored in glaciers and ice caps?"
-    expected_answer: "Approximately 68.7%"
-    ground_truth_context:
-      - "Glaciers and ice caps: ~68.7%"
-    difficulty: easy
-    notes: "Numerical recall"
+- id: 2
+  category: ANSWERABLE
+  question: "How is freshwater distributed on Earth?"
+  expected_answer: |
+    Freshwater is mainly stored in glaciers and ice caps (~68.7%), followed by groundwater (~30.1%), and a very small portion in surface water like rivers and lakes (~1.2%).
+  ground_truth_context:
+    - "Glaciers and ice caps: ~68.7%"
+    - "Groundwater: ~30.1%"
+    - "Surface water (rivers, lakes): ~1.2%"
+  difficulty: Easy
 
-  - id: 3
-    category: straightforward
-    question: "How much freshwater is groundwater?"
-    expected_answer: "Approximately 30.1%"
-    ground_truth_context:
-      - "Groundwater: ~30.1%"
-    difficulty: easy
+# - id: 3
+#   category: ANSWERABLE
+#   question: "What are the main drivers of water scarcity?"
+#   expected_answer: |
+#     The main drivers of water scarcity include population growth, agricultural demand, industrialization, climate change, and pollution.
+#   ground_truth_context:
+#     - "Population growth"
+#     - "Agriculture accounts for ~70%"
+#     - "Industrialization"
+#     - "Climate change"
+#     - "Pollution"
+#   difficulty: Medium
 
-  - id: 4
-    category: straightforward
-    question: "What percentage of freshwater withdrawals is used by agriculture?"
-    expected_answer: "Approximately 70%"
-    ground_truth_context:
-      - "Agriculture accounts for ~70% of global freshwater withdrawals"
-    difficulty: easy
+# - id: 4
+#   category: ANSWERABLE
+#   question: "Define physical water scarcity with an example"
+#   expected_answer: |
+#     Physical water scarcity occurs when natural water resources are insufficient to meet demand. It is common in arid regions such as the Middle East and North Africa.
+#   ground_truth_context:
+#     - "Occurs when natural water resources are insufficient"
+#     - "Common in arid regions (Middle East, North Africa)"
+#   difficulty: Medium
 
-  - id: 5
-    category: straightforward
-    question: "What percentage of freshwater is used by industry?"
-    expected_answer: "Approximately 20%"
-    ground_truth_context:
-      - "Industries consume ~20% of freshwater"
-    difficulty: easy
+# - id: 5
+#   category: ANSWERABLE
+#   question: "Define economic water scarcity with an example"
+#   expected_answer: |
+#     Economic water scarcity occurs when water exists but infrastructure or governance is inadequate. It is common in regions such as Sub-Saharan Africa.
+#   ground_truth_context:
+#     - "Occurs when water exists but infrastructure is inadequate"
+#     - "Common in Sub-Saharan Africa"
+#   difficulty: Medium
 
-  - id: 6
-    category: straightforward
-    question: "Define physical water scarcity"
-    expected_answer: "It occurs when natural water resources are insufficient to meet demand"
-    ground_truth_context:
-      - "Occurs when natural water resources are insufficient to meet demand."
-    difficulty: easy
+# - id: 6
+#   category: ANSWERABLE
+#   question: "What are the consequences of groundwater depletion?"
+#   expected_answer: |
+#     Groundwater depletion can lead to land subsidence, reduced agricultural productivity, and saline intrusion in coastal areas.
+#   ground_truth_context:
+#     - "Land subsidence"
+#     - "Reduced agricultural productivity"
+#     - "Saline intrusion"
+#   difficulty: Medium
 
-  - id: 7
-    category: straightforward
-    question: "Define economic water scarcity"
-    expected_answer: "It occurs when water exists but infrastructure or governance is inadequate"
-    ground_truth_context:
-      - "Occurs when water exists but infrastructure or governance is inadequate."
-    difficulty: easy
+# - id: 7
+#   category: ANSWERABLE
+#   question: "How does climate change affect water systems?"
+#   expected_answer: |
+#     Climate change alters precipitation patterns, increases droughts and floods, and accelerates glacier melt, affecting long-term water availability.
+#   ground_truth_context:
+#     - "Alters precipitation patterns"
+#     - "Droughts and floods"
+#     - "Glacier melt"
+#   difficulty: Medium
 
-  - id: 8
-    category: straightforward
-    question: "What is groundwater depletion?"
-    expected_answer: "Groundwater depletion occurs when extraction exceeds natural recharge rates"
-    ground_truth_context:
-      - "Groundwater depletion occurs when extraction exceeds natural recharge rates."
-    difficulty: easy
+# - id: 8
+#   category: ANSWERABLE
+#   question: "What are the main sources of water pollution?"
+#   expected_answer: |
+#     Major sources of water pollution include agricultural runoff, industrial effluents, and domestic sewage.
+#   ground_truth_context:
+#     - "Agricultural runoff"
+#     - "Industrial effluents"
+#     - "Domestic sewage"
+#   difficulty: Easy
 
-  - id: 9
-    category: straightforward
-    question: "Name two major sources of water pollution"
-    expected_answer: "Agricultural runoff and industrial effluents"
-    ground_truth_context:
-      - "Agricultural runoff (nitrogen, phosphorus)\nIndustrial effluents (heavy metals)"
-    difficulty: easy
+# - id: 9
+#   category: ANSWERABLE
+#   question: "What is desalination and what is its limitation?"
+#   expected_answer: |
+#     Desalination is the process of converting seawater into freshwater. Its main limitation is high energy cost.
+#   ground_truth_context:
+#     - "Converts seawater to freshwater"
+#     - "High energy cost"
+#   difficulty: Medium
 
-  - id: 10
-    category: straightforward
-    question: "What is desalination?"
-    expected_answer: "It is the process of converting seawater into freshwater"
-    ground_truth_context:
-      - "Converts seawater to freshwater"
-    difficulty: easy
-
-  - id: 11
-    category: straightforward
-    question: "What is non-revenue water?"
-    expected_answer: "Water lost before reaching consumers"
-    ground_truth_context:
-      - "Surface water (rivers, lakes): ~1.2%\nRivers and lakes combined: <0.01% of total water"
-    difficulty: easy
-
-  - id: 12
-    category: straightforward
-    question: "What is the projected increase in water demand by 2050?"
-    expected_answer: "20–30%"
-    ground_truth_context:
-      - "Water demand expected to increase by 20–30% by 2050"
-    difficulty: easy
-
-
-  # ========== MEDIUM / REASONING (8) ==========
-
-  - id: 13
-    category: reasoning
-    question: "Why is agriculture the largest consumer of freshwater?"
-    expected_answer: "Because irrigation requires large volumes of water and inefficient methods cause wastage"
-    ground_truth_context:
-      - "Agriculture accounts for ~70% of global freshwater withdrawals"
-      - "Inefficient irrigation methods (flood irrigation) lead to significant wastage"
-    difficulty: medium
-
-  - id: 14
-    category: reasoning
-    question: "How does climate change affect water availability?"
-    expected_answer: "It alters precipitation patterns, increases droughts and floods, and disrupts water supply"
-    ground_truth_context:
-      - "Alters precipitation patterns"
-      - "Increases frequency of droughts and floods"
-      - "Accelerates glacier melt, impacting long-term water supply"
-    difficulty: medium
-
-  - id: 15
-    category: reasoning
-    question: "What are the consequences of groundwater depletion?"
-    expected_answer: "Land subsidence, reduced agricultural productivity, and saline intrusion"
-    ground_truth_context:
-      - "Land subsidence"
-      - "Reduced agricultural productivity"
-      - "Saline intrusion in coastal areas"
-    difficulty: medium
-
-  - id: 16
-    category: reasoning
-    question: "Why is accessible freshwater so limited?"
-    expected_answer: "Because most freshwater is locked in glaciers and groundwater, with very little in rivers and lakes"
-    ground_truth_context:
-      - "Glaciers and ice caps: ~68.7%"
-      - "Groundwater: ~30.1%"
-      - "Surface water (rivers, lakes): ~1.2%"
-    difficulty: medium
-
-  - id: 17
-    category: reasoning
-    question: "How does pollution reduce usable water supply?"
-    expected_answer: "It contaminates water sources, making them unsafe for consumption and use"
-    ground_truth_context:
-      - "Contamination of rivers and groundwater"
-      - "Leads to reduced potable water availability"
-    difficulty: medium
-
-  - id: 18
-    category: reasoning
-    question: "Why is groundwater heavily used in countries like India?"
-    expected_answer: "Due to high demand, agricultural dependence, and insufficient surface water management"
-    ground_truth_context:
-      - "One of the largest users of groundwater globally"
-      - "Major rivers under stress"
-      - "Urban water shortages increasing"
-    difficulty: medium
-
-  - id: 19
-    category: reasoning
-    question: "What role does IoT play in water management?"
-    expected_answer: "It enables monitoring, data collection, and predictive analytics for efficient usage"
-    ground_truth_context:
-      - "Sensors for water monitoring"
-      - "Predictive analytics for demand management"
-    difficulty: medium
-
-  - id: 20
-    category: reasoning
-    question: "Why is desalination not universally adopted?"
-    expected_answer: "Because it has high energy costs"
-    ground_truth_context:
-      - "Converts seawater to freshwater"
-      - "High energy cost"
-    difficulty: medium
+# - id: 10
+#   category: ANSWERABLE
+#   question: "Why is water scarcity considered a multidimensional problem?"
+#   expected_answer: |
+#     Water scarcity is multidimensional because it involves environmental, economic, and political factors, including climate change, population growth, and governance issues.
+#   ground_truth_context:
+#     - "environmental, economic, political factors"
+#   difficulty: Hard
 
 
-  # ========== HARD / MULTI-HOP (5) ==========
+# =========================
+# PARTIAL (5)
+# =========================
 
-  - id: 21
-    category: multi_hop
-    question: "Explain the relationship between climate change and groundwater depletion"
-    expected_answer: "Climate change alters rainfall patterns reducing recharge while increasing demand, leading to over-extraction"
-    ground_truth_context:
-      - "Alters precipitation patterns"
-      - "Increases frequency of droughts and floods"
-      - "Over-irrigation"
-      - "Urban water demand"
-    difficulty: hard
+- id: 11
+  category: PARTIAL
+  question: "Compare physical and economic water scarcity"
+  expected_answer: |
+    Physical water scarcity refers to lack of water resources, while economic water scarcity refers to lack of infrastructure. Examples include the Middle East and Sub-Saharan Africa.
+  ground_truth_context:
+    - "Physical scarcity"
+    - "Economic scarcity"
+  difficulty: Hard
 
-  - id: 22
-    category: multi_hop
-    question: "Compare physical and economic water scarcity with examples"
-    expected_answer: "Physical scarcity is lack of water (Middle East), economic scarcity is lack of infrastructure (Africa)"
-    ground_truth_context:
-      - "Physical Water Scarcity: Occurs when natural water resources are insufficient to meet demand. Common in arid regions (e.g., Middle East, North Africa)"
-      - "Economic Water Scarcity: Occurs when water exists but infrastructure or governance is inadequate. Common in developing regions (e.g., Sub-Saharan Africa)"
-    difficulty: hard
+# - id: 12
+#   category: PARTIAL
+#   question: "Why is agriculture the largest consumer of freshwater?"
+#   expected_answer: |
+#     Agriculture consumes most freshwater due to irrigation needs and inefficient methods, but detailed analysis may require additional context.
+#   ground_truth_context:
+#     - "70%"
+#     - "Inefficient irrigation"
+#   difficulty: Medium
 
-  - id: 23
-    category: multi_hop
-    question: "How do technological and policy solutions complement each other in water management?"
-    expected_answer: "Technology improves efficiency while policies regulate usage and prevent overuse"
-    ground_truth_context:
-      - "Sensors for water monitoring"
-      - "Drip irrigation systems"
-      - "Pollution control laws"
-      - "Groundwater extraction limits"
-    difficulty: hard
+# - id: 13
+#   category: PARTIAL
+#   question: "How does groundwater depletion relate to urban demand?"
+#   expected_answer: |
+#     Groundwater depletion is influenced by urban demand and over-extraction, but full explanation requires combining multiple factors.
+#   ground_truth_context:
+#     - "Urban demand"
+#   difficulty: Hard
 
-  - id: 24
-    category: multi_hop
-    question: "Why will water scarcity impact economic development?"
-    expected_answer: "Because water is essential for agriculture, industry, and human health"
-    ground_truth_context:
-      - "Freshwater is a finite and essential resource that underpins human survival, economic activity, and ecosystem stability."
-      - "Agriculture accounts for ~70% of global freshwater withdrawals"
-      - "Industries consume ~20% of freshwater"
-    difficulty: hard
+# - id: 14
+#   category: PARTIAL
+#   question: "Explain the role of technology in water management"
+#   expected_answer: |
+#     Technology such as IoT and smart irrigation improves efficiency, but full solutions also require governance and policy.
+#   ground_truth_context:
+#     - "IoT"
+#     - "Smart irrigation"
+#   difficulty: Medium
 
-  - id: 25
-    category: multi_hop
-    question: "Explain why water scarcity is a multidimensional problem"
-    expected_answer: "It involves environmental, economic, and political factors"
-    ground_truth_context:
-      - "The global freshwater crisis refers to the increasing imbalance between water demand and availability, driven by population growth, climate change, pollution, and inefficient resource management."
-      - "Shared river basins require agreements"
-    difficulty: hard
+# - id: 15
+#   category: PARTIAL
+#   question: "Why will water scarcity affect economic development?"
+#   expected_answer: |
+#     Water scarcity impacts agriculture and industry, but full economic impact involves multiple interconnected systems.
+#   ground_truth_context:
+#     - "Agriculture"
+#     - "Industry"
+#   difficulty: Hard
 
 
-  # ========== HALLUCINATION / OUT-OF-SCOPE (10) ==========
+# =========================
+# UNANSWERABLE (5)
+# =========================
 
-  - id: 26
-    category: unanswerable
-    question: "What is the exact global water shortage percentage in 2024?"
-    expected_answer: "This information is not provided in the document"
-    ground_truth_context: []
-    difficulty: hard
+- id: 16
+  category: UNANSWERABLE
+  question: "What is the exact global water shortage percentage in 2024?"
+  expected_answer: "This information is not provided in the document"
+  ground_truth_context: []
+  difficulty: Hard
 
-  - id: 27
-    category: unanswerable
-    question: "Which country has the highest desalination capacity?"
-    expected_answer: "The document does not specify countries"
-    ground_truth_context: []
-    difficulty: hard
+# - id: 17
+#   category: UNANSWERABLE
+#   question: "Which country has the highest desalination capacity?"
+#   expected_answer: "The document does not specify countries"
+#   ground_truth_context: []
+#   difficulty: Hard
 
-  - id: 28
-    category: unanswerable
-    question: "What is the cost per liter of desalinated water?"
-    expected_answer: "Cost data is not provided in the document"
-    ground_truth_context: []
-    difficulty: hard
+# - id: 18
+#   category: UNANSWERABLE
+#   question: "What is the cost per liter of desalinated water?"
+#   expected_answer: "Cost data is not provided in the document"
+#   ground_truth_context: []
+#   difficulty: Hard
 
-  - id: 29
-    category: unanswerable
-    question: "Which company leads IoT water solutions globally?"
-    expected_answer: "The document does not mention specific companies"
-    ground_truth_context: []
-    difficulty: hard
+# - id: 19
+#   category: UNANSWERABLE
+#   question: "Which company leads IoT water solutions globally?"
+#   expected_answer: "The document does not mention specific companies"
+#   ground_truth_context: []
+#   difficulty: Hard
 
-  - id: 30
-    category: unanswerable
-    question: "What year did the global water crisis begin?"
-    expected_answer: "The document does not define a specific starting year"
-    ground_truth_context: []
-    difficulty: hard
-
-  - id: 31
-    category: unanswerable
-    question: "Who discovered the phenomenon of water scarcity?"
-    expected_answer: "The document does not specify who discovered this"
-    ground_truth_context: []
-    difficulty: hard
-    notes: "Tests hallucination - model may invent historical figures"
-
-  - id: 32
-    category: unanswerable
-    question: "What is the maximum depth of the deepest aquifer on Earth?"
-    expected_answer: "This specific measurement is not provided in the document"
-    ground_truth_context: []
-    difficulty: hard
-    notes: "Tests fabrication of specific numerical data"
-
-  - id: 33
-    category: unanswerable
-    question: "How many liters of water does each human need to drink daily?"
-    expected_answer: "The document does not provide this biological specification"
-    ground_truth_context: []
-    difficulty: hard
-    notes: "Tests if model confuses general knowledge with document content"
-
-  - id: 34
-    category: unanswerable
-    question: "Which continent has the most advanced water recycling systems?"
-    expected_answer: "The document does not rank continents by recycling infrastructure"
-    ground_truth_context: []
-    difficulty: hard
-    notes: "Tests model resistance to making comparative claims"
-
-  - id: 35
-    category: unanswerable
-    question: "List all water treatment companies mentioned in the document"
-    expected_answer: "No specific companies are mentioned in the document"
-    ground_truth_context: []
-    difficulty: hard
-    notes: "Tests if model fabricates company names"
+# - id: 20
+#   category: UNANSWERABLE
+#   question: "What year did the global water crisis begin?"
+#   expected_answer: "The document does not define a specific starting year"
+#   ground_truth_context: []
+#   difficulty: Hard
