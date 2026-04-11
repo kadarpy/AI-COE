@@ -423,10 +423,14 @@ def interpret_results_no_bias(
     metrics: Dict[str, Any],
     category: str,
     is_refusal: bool,
+    completeness_score: float = 1.0,
     llm: DeepEvalBaseLLM = None
 ) -> Dict[str, Any]:
     """
     Interpret evaluation results WITHOUT bias or overrides.
+
+    NEW: Completeness factor is applied to final score.
+    This prevents over-scoring of partial answers.
 
     UNANSWERABLE + Correct Refusal:
       - Hallucination ≈ 0 (good, no hallucination)
@@ -440,6 +444,7 @@ def interpret_results_no_bias(
     ANSWERABLE:
       - All metrics contribute to final score
       - Standard weighted aggregation
+      - Multiplied by completeness factor (prevents partial answer over-scoring)
 
     Key Point: NO metric overrides. Only interpretation of what DeepEval says.
     """
@@ -452,6 +457,7 @@ def interpret_results_no_bias(
     interpretation = {
         "category": category,
         "is_refusal": is_refusal,
+        "completeness_factor": completeness_score,
         "deepeval_metrics": metrics,
         "reasoning": []
     }
@@ -535,12 +541,18 @@ def interpret_results_no_bias(
                 applicable_scores[metric] * weights[metric]
                 for metric in applicable_scores
             )
-            final_score = weighted_sum / total_weight if total_weight > 0 else 0.0
+            raw_score = weighted_sum / total_weight if total_weight > 0 else 0.0
         else:
-            final_score = 0.0
+            raw_score = 0.0
+
+        # ✅ NEW: Apply completeness factor (prevents partial answer over-scoring)
+        final_score = raw_score * completeness_score
+
+        interpretation["reasoning"].append(f"Weighted aggregate (before completeness): {raw_score:.3f}")
+        interpretation["reasoning"].append(f"Completeness factor: {completeness_score:.3f}")
+        interpretation["reasoning"].append(f"Final score: {raw_score:.3f} × {completeness_score:.3f} = {final_score:.3f}")
 
         interpretation["final_score"] = round(final_score, 3)
-        interpretation["reasoning"].append(f"Weighted aggregate: {final_score:.3f}")
 
         # Determine result based on score
         if final_score >= 0.85:
@@ -553,6 +565,7 @@ def interpret_results_no_bias(
     interpretation["reasoning"].append(f"Result: {interpretation['result']} (score={interpretation['final_score']})")
 
     return interpretation
+
 
 
 # =========================
@@ -694,10 +707,13 @@ class UIEvaluator:
         )
 
         # ==================== STEP 5: INTERPRET RESULTS (NO BIAS) ====================
+        completeness = compute_semantic_completeness(expected_answer, actual_answer)
+
         interpretation = interpret_results_no_bias(
             metrics=metrics,
             category=category,
-            is_refusal=is_refusal
+            is_refusal=is_refusal,
+            completeness_score=completeness
         )
 
         # ==================== ASSEMBLE OUTPUT ====================
@@ -711,6 +727,7 @@ class UIEvaluator:
             "num_retrieved_docs": len(retrieval_context),
             "is_refusal": is_refusal,
             "metrics": metrics,
+            "completeness_score": round(completeness, 3),
             "interpretation": interpretation,
             "result": interpretation["result"],
             "final_score": interpretation["final_score"],
