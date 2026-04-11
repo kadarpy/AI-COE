@@ -130,7 +130,10 @@ def get_embeddings():
             )
 
     except Exception as e:
-        logger.warning(f"Embedding init failed → fallback TF-IDF: {e}")
+        # ⚠️ DEGRADED MODE: TF-IDF fallback
+        logger.warning(f"⚠️  PRIMARY EMBEDDINGS FAILED: {e}")
+        logger.warning("⚠️  FALLING BACK TO TF-IDF (DEGRADED RETRIEVAL QUALITY)")
+        logger.warning("⚠️  Evaluation results may be less accurate with TF-IDF embeddings")
 
         from sklearn.feature_extraction.text import TfidfVectorizer
         from langchain_core.embeddings import Embeddings
@@ -148,6 +151,7 @@ def get_embeddings():
             def embed_query(self, text):
                 return self.vectorizer.transform([text]).toarray()[0].tolist()
 
+        logger.info("⚠️  TF-IDF embeddings initialized (DEGRADED MODE)")
         return TFIDFEmbeddings()
 
 def build_vector_store(chunks):
