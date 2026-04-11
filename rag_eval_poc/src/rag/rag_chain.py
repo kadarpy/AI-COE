@@ -22,13 +22,15 @@ def get_llm():
     if provider == "openai":
         logger.debug("Using OpenAI LLM")
         from langchain_openai import ChatOpenAI
+
         return ChatOpenAI(
-            model=config.OPENAI_MODEL,
+            model=config.LLM_MODEL,
             temperature=config.TEMPERATURE,
-            api_key=config.OPENAI_API_KEY,
+            api_key=config.API_KEY,
+            base_url=config.BASE_URL,
             max_retries=3
         )
-    
+            
     elif provider == "groq":
         logger.debug("Using Groq LLM")
         from langchain_groq import ChatGroq
@@ -40,23 +42,25 @@ def get_llm():
         )
     
     elif provider == "ollama":
-        logger.debug("Using Ollama LLM")
         from langchain_community.chat_models import ChatOllama
+
         return ChatOllama(
-            model=config.OLLAMA_MODEL,
-            base_url=config.OLLAMA_BASE_URL,
-            temperature=config.TEMPERATURE,
-            top_p=0.9
-        )
-    elif provider == "deepseek":
-        logger.debug("Using Deepseek LLM")
-        from langchain_deepseek import ChatDeepSeek
-        return ChatDeepSeek(
             model=config.LLM_MODEL,
-            temperature=config.TEMPERATURE,
-            api_key=config.API_KEY,
-            max_retries=3
+            temperature=config.TEMPERATURE
         )
+    
+    elif provider == "deepseek":
+        try:
+            from langchain_deepseek import ChatDeepSeek
+            return ChatDeepSeek(
+                model=config.LLM_MODEL,
+                temperature=config.TEMPERATURE,
+                api_key=config.API_KEY,
+                max_retries=3
+            )
+        except ImportError:
+            logger.error("DeepSeek not installed - please install langchain_deepseek to use this provider")
+
     
     else:
         logger.error(f"Unknown provider: {provider}")

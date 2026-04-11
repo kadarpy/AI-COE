@@ -11,104 +11,141 @@ from config import config
 
 logger = logging.getLogger(__name__)
 
-def get_embeddings():
-    """
-    Get embeddings using HuggingFace sentence-transformers (384 dims)
-    Falls back to TF-IDF if sentence-transformers unavailable
+# def get_embeddings():
+#     """
+#     Get embeddings using HuggingFace sentence-transformers (384 dims)
+#     Falls back to TF-IDF if sentence-transformers unavailable
     
-    Returns:
-        Embeddings instance
-    """
+#     Returns:
+#         Embeddings instance
+#     """
+#     try:
+#         try:
+#             from langchain_huggingface import HuggingFaceEmbeddings
+#         except:
+#             raise ImportError("Skip HF embeddings")
+        
+#         logger.info("Using HuggingFace sentence-transformers embeddings (384 dimensions)")
+#         embeddings = HuggingFaceEmbeddings(
+#             model_name="BAAI/bge-base-en-v1.5",  # 384 dimensional embeddings
+#             model_kwargs={"device": "cpu"}
+#         )
+#         return embeddings
+        
+#     except Exception as e:
+#         logger.warning(f"HuggingFace embeddings failed: {str(e)}")
+#         logger.info("Falling back to TF-IDF embeddings")
+        
+#         from sklearn.feature_extraction.text import TfidfVectorizer
+#         from langchain_core.embeddings import Embeddings
+#         import numpy as np
+        
+#         class TFIDFEmbeddings(Embeddings):
+#             """Consistent TF-IDF embeddings with fixed dimensionality"""
+            
+#             def __init__(self):
+#                 # Use fixed vocabulary to ensure consistent dimensions
+#                 self.vectorizer = TfidfVectorizer(
+#                     max_features=384,  # Fixed at 384 to match default
+#                     min_df=1,
+#                     stop_words='english'
+#                 )
+#                 self.fitted = False
+#                 self.fitted_texts = []
+            
+#             def _pad_vector(self, vector):
+#                 """Pad or trim vector to exactly 384 dimensions"""
+#                 if len(vector) < 384:
+#                     # Pad with zeros to reach 384 dimensions
+#                     return vector + [0.0] * (384 - len(vector))
+#                 elif len(vector) > 384:
+#                     # Trim to 384 dimensions
+#                     return vector[:384]
+#                 else:
+#                     return vector
+            
+#             def embed_documents(self, texts):
+#                 """Embed documents - fits on first call"""
+#                 if not self.fitted:
+#                     # Fit on all texts at once for consistency
+#                     self.fitted_texts = texts
+#                     try:
+#                         vectors = self.vectorizer.fit_transform(texts).toarray()
+#                         # Pad each vector to 384 dimensions
+#                         vectors = np.array([self._pad_vector(v.tolist()) for v in vectors])
+#                     except Exception as fit_err:
+#                         logger.error(f"Failed to fit TF-IDF: {fit_err}")
+#                         # If fit fails, return dummy vectors as fallback
+#                         vectors = np.zeros((len(texts), 384))
+#                     self.fitted = True
+#                     return vectors.tolist()
+#                 else:
+#                     # Use existing fitted vectorizer
+#                     try:
+#                         vectors = self.vectorizer.transform(texts).toarray()
+#                         # Pad each vector to 384 dimensions
+#                         vectors = np.array([self._pad_vector(v.tolist()) for v in vectors])
+#                     except Exception as transform_err:
+#                         logger.warning(f"Failed to transform texts: {transform_err}")
+#                         vectors = np.zeros((len(texts), 384))
+#                     return vectors.tolist()
+            
+#             def embed_query(self, text):
+#                 """Embed query"""
+#                 if not self.fitted:
+#                     logger.warning("Embedding query before TFIDFEmbeddings was fitted with documents")
+#                     # Fit on the query itself as a fallback
+#                     _ = self.embed_documents([text])
+                
+#                 try:
+#                     vector = self.vectorizer.transform([text]).toarray()[0]
+#                     vector = self._pad_vector(vector.tolist())
+#                 except Exception as e:
+#                     logger.warning(f"Failed to embed query: {e}")
+#                     vector = np.zeros(384).tolist()
+                
+#                 return vector
+        
+#         logger.info("Using TF-IDF embeddings (384 dimensions)")
+#         return TFIDFEmbeddings()
+def get_embeddings():
+    from config import config
+
+    provider = config.LLM_PROVIDER
+
     try:
-        try:
-            from langchain_huggingface import HuggingFaceEmbeddings
-        except:
-            raise ImportError("Skip HF embeddings")
-        
-        logger.info("Using HuggingFace sentence-transformers embeddings (384 dimensions)")
-        embeddings = HuggingFaceEmbeddings(
-            model_name="BAAI/bge-base-en-v1.5",  # 384 dimensional embeddings
-            model_kwargs={"device": "cpu"}
-        )
-        return embeddings
-        
+        if provider == "ollama":
+            from langchain_community.embeddings import OllamaEmbeddings
+            logger.info("Using Ollama embeddings")
+            return OllamaEmbeddings(model="nomic-embed-text")
+
+        else:
+            from langchain.embeddings import HuggingFaceEmbeddings
+            logger.info("Using HuggingFace embeddings")
+            return HuggingFaceEmbeddings(
+                model_name="BAAI/bge-base-en-v1.5"
+            )
+
     except Exception as e:
-        logger.warning(f"HuggingFace embeddings failed: {str(e)}")
-        logger.info("Falling back to TF-IDF embeddings")
-        
+        logger.warning(f"Embedding init failed → fallback TF-IDF: {e}")
+
         from sklearn.feature_extraction.text import TfidfVectorizer
         from langchain_core.embeddings import Embeddings
-        import numpy as np
-        
-        class TFIDFEmbeddings(Embeddings):
-            """Consistent TF-IDF embeddings with fixed dimensionality"""
-            
-            def __init__(self):
-                # Use fixed vocabulary to ensure consistent dimensions
-                self.vectorizer = TfidfVectorizer(
-                    max_features=384,  # Fixed at 384 to match default
-                    min_df=1,
-                    stop_words='english'
-                )
-                self.fitted = False
-                self.fitted_texts = []
-            
-            def _pad_vector(self, vector):
-                """Pad or trim vector to exactly 384 dimensions"""
-                if len(vector) < 384:
-                    # Pad with zeros to reach 384 dimensions
-                    return vector + [0.0] * (384 - len(vector))
-                elif len(vector) > 384:
-                    # Trim to 384 dimensions
-                    return vector[:384]
-                else:
-                    return vector
-            
-            def embed_documents(self, texts):
-                """Embed documents - fits on first call"""
-                if not self.fitted:
-                    # Fit on all texts at once for consistency
-                    self.fitted_texts = texts
-                    try:
-                        vectors = self.vectorizer.fit_transform(texts).toarray()
-                        # Pad each vector to 384 dimensions
-                        vectors = np.array([self._pad_vector(v.tolist()) for v in vectors])
-                    except Exception as fit_err:
-                        logger.error(f"Failed to fit TF-IDF: {fit_err}")
-                        # If fit fails, return dummy vectors as fallback
-                        vectors = np.zeros((len(texts), 384))
-                    self.fitted = True
-                    return vectors.tolist()
-                else:
-                    # Use existing fitted vectorizer
-                    try:
-                        vectors = self.vectorizer.transform(texts).toarray()
-                        # Pad each vector to 384 dimensions
-                        vectors = np.array([self._pad_vector(v.tolist()) for v in vectors])
-                    except Exception as transform_err:
-                        logger.warning(f"Failed to transform texts: {transform_err}")
-                        vectors = np.zeros((len(texts), 384))
-                    return vectors.tolist()
-            
-            def embed_query(self, text):
-                """Embed query"""
-                if not self.fitted:
-                    logger.warning("Embedding query before TFIDFEmbeddings was fitted with documents")
-                    # Fit on the query itself as a fallback
-                    _ = self.embed_documents([text])
-                
-                try:
-                    vector = self.vectorizer.transform([text]).toarray()[0]
-                    vector = self._pad_vector(vector.tolist())
-                except Exception as e:
-                    logger.warning(f"Failed to embed query: {e}")
-                    vector = np.zeros(384).tolist()
-                
-                return vector
-        
-        logger.info("Using TF-IDF embeddings (384 dimensions)")
-        return TFIDFEmbeddings()
 
+        class TFIDFEmbeddings(Embeddings):
+            def __init__(self):
+                self.vectorizer = TfidfVectorizer(max_features=384)
+                self.fitted = False
+
+            def embed_documents(self, texts):
+                vectors = self.vectorizer.fit_transform(texts).toarray()
+                self.fitted = True
+                return vectors.tolist()
+
+            def embed_query(self, text):
+                return self.vectorizer.transform([text]).toarray()[0].tolist()
+
+        return TFIDFEmbeddings()
 
 def build_vector_store(chunks):
     """

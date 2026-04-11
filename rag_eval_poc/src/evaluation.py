@@ -378,11 +378,97 @@ class UIEvaluator:
         self.test_case_manager = TestCaseManager()
         logger.info("UIEvaluator initialized")
 
+    @staticmethod
+    def classify_failure(metrics: dict, category: str, is_refusal: bool) -> dict:
+
+        hallucination = metrics.get("Hallucination", {}).get("score", 0)
+        relevancy = metrics.get("AnswerRelevancy", {}).get("score", 0)
+        recall = metrics.get("ContextualRecall", {}).get("score", 0)
+        faithfulness = metrics.get("Faithfulness", {}).get("score", 0)
+
+        # =========================
+        # UNANSWERABLE CASE
+        # =========================
+        if category == "unanswerable":
+            if is_refusal:
+                return {"type": "correct_refusal", "severity": "none"}
+            else:
+                return {"type": "hallucination", "severity": "critical"}
+
+        # =========================
+        # NORMAL CASES
+        # =========================
+        if hallucination > 0.3:
+            return {"type": "hallucination", "severity": "critical"}
+
+        if recall < 0.4:
+            return {"type": "retrieval_miss", "severity": "high"}
+
+        if relevancy < 0.6:
+            return {"type": "irrelevant_answer", "severity": "medium"}
+
+        if faithfulness < 0.7:
+            return {"type": "unfaithful_generation", "severity": "high"}
+
+        return {"type": "correct", "severity": "none"}
+    
+    def compute_final_score(metrics: dict) -> float:
+
+        weights = {
+            "Hallucination": 0.35,   # MOST IMPORTANT
+            "Faithfulness": 0.25,
+            "AnswerRelevancy": 0.20,
+            "ContextualRecall": 0.20
+        }
+
+        score = 0
+
+        for metric, weight in weights.items():
+            value = metrics.get(metric, {}).get("score")
+
+            if value is None:
+                continue
+
+            # invert hallucination
+            if metric == "Hallucination":
+                value = 1 - value
+
+            score += value * weight
+
+        return round(score, 3)
+    
+    def compute_pass_fail(final_score: float, failure_type: str) -> str:
+
+        # Hard fail conditions
+        if failure_type == "hallucination":
+            return "FAIL"
+
+        if final_score >= 0.85:
+            return "PASS"
+        elif final_score >= 0.65:
+            return "WARNING"
+        else:
+            return "FAIL"
+
     def evaluate_single_test(self, test_case: Dict[str, Any]) -> Dict[str, Any]:
 
         question = test_case.get("question", "")
         expected_answer = test_case.get("expected_answer", "")
         test_id = test_case.get("id")
+
+        import hashlib
+
+        def get_test_hash(question, config):
+            key = f"{question}|{config.LLM_MODEL}|{config.TEMPERATURE}|{config.RETRIEVER_K}"
+            return hashlib.md5(key.encode()).hexdigest()
+        
+        cache_file = Path(f"cache/{get_test_hash(question, config)}.json")
+        cache_file.parent.mkdir(exist_ok=True)
+
+        if cache_file.exists():
+            cached = json.load(open(cache_file))
+            self.results.append(cached)   # 🔥 CRITICAL FIX
+            return cached
 
         # ✅ ALWAYS define early
         category = test_case.get("category", "").lower()
@@ -465,6 +551,31 @@ class UIEvaluator:
         }
 
         # =========================
+        # PRODUCTION EVALUATION LAYER
+        # =========================
+
+        failure = self.classify_failure(metrics, category, is_refusal)
+
+        final_score = self.compute_final_score(metrics)
+
+        status = self.compute_pass_fail(final_score, failure["type"])
+
+        metrics["FinalScore"] = {
+            "score": final_score,
+            "reason": "Weighted aggregate score"
+        }
+
+        metrics["EvaluationStatus"] = {
+            "score": final_score,
+            "label": status
+        }
+
+        metrics["FailureType"] = {
+            "type": failure["type"],
+            "severity": failure["severity"]
+        }
+
+        # =========================
         # OUTPUT
         # =========================
         output = {
@@ -477,10 +588,18 @@ class UIEvaluator:
             "retrieval_context": retrieval_context,
             "num_retrieved_docs": len(retrieval_context),
             "metrics": metrics,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "failure_analysis": {
+            "failure_type": failure["type"],
+            "reason": f"{failure['type']} triggered",
+            "metric_alignment": "derived from metrics",
+            "notes": f"Severity: {failure['severity']}"}
         }
 
         self.results.append(output)
+
+        with open(cache_file, "w") as f:
+            json.dump(output, f, indent=2)
 
         logger.info(f"Test {test_id} complete")
 
@@ -517,6 +636,7 @@ class UIEvaluator:
         Returns:
             List of results
         """
+        self.results = []   # 🔥 RESET BEFORE RUN
         logger.info(f"Batch evaluation: {len(test_cases)} cases")
         
         for i, test_case in enumerate(test_cases, 1):

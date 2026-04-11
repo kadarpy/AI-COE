@@ -26,12 +26,14 @@ class Config:
     DEFAULT_DOCUMENT_PATH = DATA_DIR / "document.txt"
 
     # LLM Provider Configuration (supports multiple providers)
-    LLM_PROVIDER = os.getenv("LLM_PROVIDER").lower()
+    LLM_PROVIDER = (os.getenv("LLM_PROVIDER") or "").lower()
     
     # Groq Configuration (FREE - RECOMMENDED)
     API_KEY = os.getenv("API_KEY", "")
     LLM_MODEL = os.getenv("LLM_MODEL")
     CONFIDENT_API_KEY = os.getenv("CONFIDENT_API_KEY", "")
+    BASE_URL = os.getenv("BASE_URL", "")
+    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "")
     
     # Temperature for all providers
     TEMPERATURE = float(os.getenv("TEMPERATURE"))
@@ -84,7 +86,17 @@ class Config:
             if not Config.API_KEY:
                 raise ValueError("API_KEY is required for Deepseek provider")
             if not Config.LLM_MODEL:
-                raise ValueError("LLM_MODEL is required for Deepseek provider") 
+                raise ValueError("LLM_MODEL is required for Deepseek provider")
+        elif provider == "ollama":
+            if not Config.OLLAMA_BASE_URL:
+                print("OLLAMA_BASE_URL is required for Ollama provider")
+            if not Config.LLM_MODEL:
+                raise ValueError("LLM_MODEL is required for Ollama provider")
+        elif provider == "openai":
+            if not Config.API_KEY:
+                raise ValueError("API_KEY is required for OpenAI provider")
+            if not Config.LLM_MODEL:
+                raise ValueError("LLM_MODEL is required for OpenAI provider") 
         else:
             raise ValueError(f"Unsupported LLM_PROVIDER: {provider}")
 

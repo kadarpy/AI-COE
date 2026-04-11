@@ -236,6 +236,29 @@ textarea {
 # =========================================================
 # SESSION STATE
 # =========================================================
+from pathlib import Path
+import json
+
+LATEST_FILE = Path("evaluation_results_latest.json")
+ARCHIVE_FILE = Path(f"runs/eval_{int(time.time())}.json")
+
+def save_results(results):
+    LATEST_FILE.parent.mkdir(exist_ok=True)
+    ARCHIVE_FILE.parent.mkdir(exist_ok=True)
+
+    # save latest
+    with open(LATEST_FILE, "w") as f:
+        json.dump(results, f, indent=2, default=str)
+
+    # save archive
+    with open(ARCHIVE_FILE, "w") as f:
+        json.dump(results, f, indent=2, default=str)
+
+def load_results():
+    if LATEST_FILE.exists():
+        with open(LATEST_FILE, "r") as f:
+            return json.load(f)
+    return []
 
 def initialize_session():
 
@@ -260,7 +283,7 @@ def initialize_session():
         st.session_state.evaluation_test_cases = []
 
     if "evaluation_results" not in st.session_state:
-        st.session_state.evaluation_results = []
+        st.session_state.evaluation_results = load_results()
 
     if "evaluator" not in st.session_state:
         st.session_state.evaluator = None
@@ -402,7 +425,7 @@ def sidebar_settings():
 
         if st.button("Reset Vector Database", key="sidebar_reset"):
 
-            db_path = Path("src/chroma_db")
+            db_path = config.CHROMA_DB_DIR
 
             if db_path.exists():
                 for _ in range(5):
@@ -866,6 +889,12 @@ def display_batch_evaluation():
         
         # Store results
         st.session_state.evaluation_results = batch_results
+        save_results(batch_results)
+
+        if st.button("Clear Saved Results"):
+            LATEST_FILE.unlink(missing_ok=True)
+            st.session_state.evaluation_results = []
+            st.success("Results cleared")
         
         progress_bar.progress(1.0)
         status_text.text(" Evaluation complete!")
@@ -874,7 +903,35 @@ def display_batch_evaluation():
         st.write("---")
         st.subheader("Batch Results Summary")
         
-        summary = st.session_state.evaluator.get_results_summary()
+        results = st.session_state.evaluation_results
+
+        if not results:
+            return {}
+
+        import statistics
+
+        metric_names = ["Hallucination", "Faithfulness", "AnswerRelevancy", "ContextualRecall"]
+
+        metric_statistics = {}
+
+        for metric in metric_names:
+            scores = [
+                r["metrics"].get(metric, {}).get("score")
+                for r in results
+                if r.get("metrics") and r["metrics"].get(metric, {}).get("score") is not None
+            ]
+
+            if scores:
+                metric_statistics[metric] = {
+                    "mean": statistics.mean(scores),
+                    "min": min(scores),
+                    "max": max(scores)
+                }
+
+        summary = {
+            "total_tests": len(results),
+            "metric_statistics": metric_statistics
+        }
         
         col1 = st.columns(1)[0]
         with col1:
@@ -913,7 +970,35 @@ def display_evaluation_results():
         st.info("Run batch evaluation to see results")
         return
 
-    summary = st.session_state.evaluator.get_results_summary()
+    results = st.session_state.evaluation_results
+
+    if not results:
+        return {}
+
+    import statistics
+
+    metric_names = ["Hallucination", "Faithfulness", "AnswerRelevancy", "ContextualRecall"]
+
+    metric_statistics = {}
+
+    for metric in metric_names:
+        scores = [
+            r["metrics"].get(metric, {}).get("score")
+            for r in results
+            if r.get("metrics") and r["metrics"].get(metric, {}).get("score") is not None
+        ]
+
+        if scores:
+            metric_statistics[metric] = {
+                "mean": statistics.mean(scores),
+                "min": min(scores),
+                "max": max(scores)
+            }
+
+    summary = {
+        "total_tests": len(results),
+        "metric_statistics": metric_statistics
+    }
 
     # ==============================
     # 1. EXECUTIVE SUMMARY
@@ -968,7 +1053,14 @@ def display_evaluation_results():
 
         for result in st.session_state.evaluation_results:
 
-            status = "OK" if not result.get("error") else "ERROR"
+            status = result.get("metrics", {}).get("EvaluationStatus", {}).get("label", "UNKNOWN")
+
+            if status == "PASS":
+                st.success("PASS")
+            elif status == "WARNING":
+                st.warning("WARNING")
+            else:
+                st.error("FAIL")
 
             results_data.append({
                 "ID": result.get("test_id"),
@@ -1033,7 +1125,37 @@ def display_clean_dashboard():
         st.info("Run batch evaluation to see results")
         return
 
-    summary = st.session_state.evaluator.get_results_summary()
+    results = st.session_state.evaluation_results
+
+    if not results:
+        st.info("Run batch evaluation to see results")
+        return
+
+    # rebuild summary manually
+    import statistics
+
+    metric_names = ["Hallucination", "Faithfulness", "AnswerRelevancy", "ContextualRecall"]
+
+    metric_statistics = {}
+
+    for metric in metric_names:
+        scores = [
+            r["metrics"].get(metric, {}).get("score")
+            for r in results
+            if r.get("metrics") and r["metrics"].get(metric, {}).get("score") is not None
+        ]
+
+        if scores:
+            metric_statistics[metric] = {
+                "mean": statistics.mean(scores),
+                "min": min(scores),
+                "max": max(scores)
+            }
+
+    summary = {
+        "total_tests": len(results),
+        "metric_statistics": metric_statistics
+    }
 
     # ======================
     # 1. EXECUTIVE KPI ROW
@@ -1126,7 +1248,35 @@ def display_metrics_dashboard():
     if st.session_state.evaluator is None:
         st.session_state.evaluator = UIEvaluator(st.session_state.bot.qa_chain)
     
-    summary = st.session_state.evaluator.get_results_summary()
+    results = st.session_state.evaluation_results
+
+    if not results:
+        return {}
+
+    import statistics
+
+    metric_names = ["Hallucination", "Faithfulness", "AnswerRelevancy", "ContextualRecall"]
+
+    metric_statistics = {}
+
+    for metric in metric_names:
+        scores = [
+            r["metrics"].get(metric, {}).get("score")
+            for r in results
+            if r.get("metrics") and r["metrics"].get(metric, {}).get("score") is not None
+        ]
+
+        if scores:
+            metric_statistics[metric] = {
+                "mean": statistics.mean(scores),
+                "min": min(scores),
+                "max": max(scores)
+            }
+
+    summary = {
+        "total_tests": len(results),
+        "metric_statistics": metric_statistics
+    }
     
     # Create metric score visualization
     if summary.get("metric_statistics"):
@@ -1333,7 +1483,7 @@ def main():
     with tab_evaluation:
         st.markdown("### Evaluation Mode")
 
-        st.info("Using pure DeepEval (no thresholds, no pass/fail)")
+        st.info("Production Evaluation Mode (DeepEval + Decision Engine)")
 
         if not st.session_state.bot_initialized:
             st.warning("⚠ Initialize RAG bot in the Chat tab first!")
