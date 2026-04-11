@@ -626,6 +626,17 @@ class UIEvaluator:
         self.test_case_manager = TestCaseManager()
         logger.info("UIEvaluator initialized (production-grade hybrid system)")
 
+    @staticmethod
+    def _check_llm_for_metrics():
+        """Check if LLM is properly configured for evaluation."""
+        try:
+            api_key = config.API_KEY or os.getenv("API_KEY")
+            if not api_key:
+                return False, "API_KEY not configured in environment or config/.env"
+            return True, "LLM ready for evaluation"
+        except Exception as e:
+            return False, str(e)
+
     def evaluate_single_test(self, test_case: Dict[str, Any]) -> Dict[str, Any]:
         """
         Evaluate a single test case.
