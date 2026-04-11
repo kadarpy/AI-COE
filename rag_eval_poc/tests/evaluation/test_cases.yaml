@@ -25,90 +25,90 @@ test_cases:
     - "Surface water (rivers, lakes): ~1.2%"
   difficulty: Easy
 
-# - id: 3
-#   category: ANSWERABLE
-#   question: "What are the main drivers of water scarcity?"
-#   expected_answer: |
-#     The main drivers of water scarcity include population growth, agricultural demand, industrialization, climate change, and pollution.
-#   ground_truth_context:
-#     - "Population growth"
-#     - "Agriculture accounts for ~70%"
-#     - "Industrialization"
-#     - "Climate change"
-#     - "Pollution"
-#   difficulty: Medium
+- id: 3
+  category: ANSWERABLE
+  question: "What are the main drivers of water scarcity?"
+  expected_answer: |
+    The main drivers of water scarcity include population growth, agricultural demand, industrialization, climate change, and pollution.
+  ground_truth_context:
+    - "Population growth"
+    - "Agriculture accounts for ~70%"
+    - "Industrialization"
+    - "Climate change"
+    - "Pollution"
+  difficulty: Medium
 
-# - id: 4
-#   category: ANSWERABLE
-#   question: "Define physical water scarcity with an example"
-#   expected_answer: |
-#     Physical water scarcity occurs when natural water resources are insufficient to meet demand. It is common in arid regions such as the Middle East and North Africa.
-#   ground_truth_context:
-#     - "Occurs when natural water resources are insufficient"
-#     - "Common in arid regions (Middle East, North Africa)"
-#   difficulty: Medium
+- id: 4
+  category: ANSWERABLE
+  question: "Define physical water scarcity with an example"
+  expected_answer: |
+    Physical water scarcity occurs when natural water resources are insufficient to meet demand. It is common in arid regions such as the Middle East and North Africa.
+  ground_truth_context:
+    - "Occurs when natural water resources are insufficient"
+    - "Common in arid regions (Middle East, North Africa)"
+  difficulty: Medium
 
-# - id: 5
-#   category: ANSWERABLE
-#   question: "Define economic water scarcity with an example"
-#   expected_answer: |
-#     Economic water scarcity occurs when water exists but infrastructure or governance is inadequate. It is common in regions such as Sub-Saharan Africa.
-#   ground_truth_context:
-#     - "Occurs when water exists but infrastructure is inadequate"
-#     - "Common in Sub-Saharan Africa"
-#   difficulty: Medium
+- id: 5
+  category: ANSWERABLE
+  question: "Define economic water scarcity with an example"
+  expected_answer: |
+    Economic water scarcity occurs when water exists but infrastructure or governance is inadequate. It is common in regions such as Sub-Saharan Africa.
+  ground_truth_context:
+    - "Occurs when water exists but infrastructure is inadequate"
+    - "Common in Sub-Saharan Africa"
+  difficulty: Medium
 
-# - id: 6
-#   category: ANSWERABLE
-#   question: "What are the consequences of groundwater depletion?"
-#   expected_answer: |
-#     Groundwater depletion can lead to land subsidence, reduced agricultural productivity, and saline intrusion in coastal areas.
-#   ground_truth_context:
-#     - "Land subsidence"
-#     - "Reduced agricultural productivity"
-#     - "Saline intrusion"
-#   difficulty: Medium
+- id: 6
+  category: ANSWERABLE
+  question: "What are the consequences of groundwater depletion?"
+  expected_answer: |
+    Groundwater depletion can lead to land subsidence, reduced agricultural productivity, and saline intrusion in coastal areas.
+  ground_truth_context:
+    - "Land subsidence"
+    - "Reduced agricultural productivity"
+    - "Saline intrusion"
+  difficulty: Medium
 
-# - id: 7
-#   category: ANSWERABLE
-#   question: "How does climate change affect water systems?"
-#   expected_answer: |
-#     Climate change alters precipitation patterns, increases droughts and floods, and accelerates glacier melt, affecting long-term water availability.
-#   ground_truth_context:
-#     - "Alters precipitation patterns"
-#     - "Droughts and floods"
-#     - "Glacier melt"
-#   difficulty: Medium
+- id: 7
+  category: ANSWERABLE
+  question: "How does climate change affect water systems?"
+  expected_answer: |
+    Climate change alters precipitation patterns, increases droughts and floods, and accelerates glacier melt, affecting long-term water availability.
+  ground_truth_context:
+    - "Alters precipitation patterns"
+    - "Droughts and floods"
+    - "Glacier melt"
+  difficulty: Medium
 
-# - id: 8
-#   category: ANSWERABLE
-#   question: "What are the main sources of water pollution?"
-#   expected_answer: |
-#     Major sources of water pollution include agricultural runoff, industrial effluents, and domestic sewage.
-#   ground_truth_context:
-#     - "Agricultural runoff"
-#     - "Industrial effluents"
-#     - "Domestic sewage"
-#   difficulty: Easy
+- id: 8
+  category: ANSWERABLE
+  question: "What are the main sources of water pollution?"
+  expected_answer: |
+    Major sources of water pollution include agricultural runoff, industrial effluents, and domestic sewage.
+  ground_truth_context:
+    - "Agricultural runoff"
+    - "Industrial effluents"
+    - "Domestic sewage"
+  difficulty: Easy
 
-# - id: 9
-#   category: ANSWERABLE
-#   question: "What is desalination and what is its limitation?"
-#   expected_answer: |
-#     Desalination is the process of converting seawater into freshwater. Its main limitation is high energy cost.
-#   ground_truth_context:
-#     - "Converts seawater to freshwater"
-#     - "High energy cost"
-#   difficulty: Medium
+- id: 9
+  category: ANSWERABLE
+  question: "What is desalination and what is its limitation?"
+  expected_answer: |
+    Desalination is the process of converting seawater into freshwater. Its main limitation is high energy cost.
+  ground_truth_context:
+    - "Converts seawater to freshwater"
+    - "High energy cost"
+  difficulty: Medium
 
-# - id: 10
-#   category: ANSWERABLE
-#   question: "Why is water scarcity considered a multidimensional problem?"
-#   expected_answer: |
-#     Water scarcity is multidimensional because it involves environmental, economic, and political factors, including climate change, population growth, and governance issues.
-#   ground_truth_context:
-#     - "environmental, economic, political factors"
-#   difficulty: Hard
+- id: 10
+  category: ANSWERABLE
+  question: "Why is water scarcity considered a multidimensional problem?"
+  expected_answer: |
+    Water scarcity is multidimensional because it involves environmental, economic, and political factors, including climate change, population growth, and governance issues.
+  ground_truth_context:
+    - "environmental, economic, political factors"
+  difficulty: Hard
 
 
 # =========================
@@ -125,44 +125,44 @@ test_cases:
     - "Economic scarcity"
   difficulty: Hard
 
-# - id: 12
-#   category: PARTIAL
-#   question: "Why is agriculture the largest consumer of freshwater?"
-#   expected_answer: |
-#     Agriculture consumes most freshwater due to irrigation needs and inefficient methods, but detailed analysis may require additional context.
-#   ground_truth_context:
-#     - "70%"
-#     - "Inefficient irrigation"
-#   difficulty: Medium
+- id: 12
+  category: PARTIAL
+  question: "Why is agriculture the largest consumer of freshwater?"
+  expected_answer: |
+    Agriculture consumes most freshwater due to irrigation needs and inefficient methods, but detailed analysis may require additional context.
+  ground_truth_context:
+    - "70%"
+    - "Inefficient irrigation"
+  difficulty: Medium
 
-# - id: 13
-#   category: PARTIAL
-#   question: "How does groundwater depletion relate to urban demand?"
-#   expected_answer: |
-#     Groundwater depletion is influenced by urban demand and over-extraction, but full explanation requires combining multiple factors.
-#   ground_truth_context:
-#     - "Urban demand"
-#   difficulty: Hard
+- id: 13
+  category: PARTIAL
+  question: "How does groundwater depletion relate to urban demand?"
+  expected_answer: |
+    Groundwater depletion is influenced by urban demand and over-extraction, but full explanation requires combining multiple factors.
+  ground_truth_context:
+    - "Urban demand"
+  difficulty: Hard
 
-# - id: 14
-#   category: PARTIAL
-#   question: "Explain the role of technology in water management"
-#   expected_answer: |
-#     Technology such as IoT and smart irrigation improves efficiency, but full solutions also require governance and policy.
-#   ground_truth_context:
-#     - "IoT"
-#     - "Smart irrigation"
-#   difficulty: Medium
+- id: 14
+  category: PARTIAL
+  question: "Explain the role of technology in water management"
+  expected_answer: |
+    Technology such as IoT and smart irrigation improves efficiency, but full solutions also require governance and policy.
+  ground_truth_context:
+    - "IoT"
+    - "Smart irrigation"
+  difficulty: Medium
 
-# - id: 15
-#   category: PARTIAL
-#   question: "Why will water scarcity affect economic development?"
-#   expected_answer: |
-#     Water scarcity impacts agriculture and industry, but full economic impact involves multiple interconnected systems.
-#   ground_truth_context:
-#     - "Agriculture"
-#     - "Industry"
-#   difficulty: Hard
+- id: 15
+  category: PARTIAL
+  question: "Why will water scarcity affect economic development?"
+  expected_answer: |
+    Water scarcity impacts agriculture and industry, but full economic impact involves multiple interconnected systems.
+  ground_truth_context:
+    - "Agriculture"
+    - "Industry"
+  difficulty: Hard
 
 
 # =========================
@@ -176,30 +176,30 @@ test_cases:
   ground_truth_context: []
   difficulty: Hard
 
-# - id: 17
-#   category: UNANSWERABLE
-#   question: "Which country has the highest desalination capacity?"
-#   expected_answer: "The document does not specify countries"
-#   ground_truth_context: []
-#   difficulty: Hard
+- id: 17
+  category: UNANSWERABLE
+  question: "Which country has the highest desalination capacity?"
+  expected_answer: "The document does not specify countries"
+  ground_truth_context: []
+  difficulty: Hard
 
-# - id: 18
-#   category: UNANSWERABLE
-#   question: "What is the cost per liter of desalinated water?"
-#   expected_answer: "Cost data is not provided in the document"
-#   ground_truth_context: []
-#   difficulty: Hard
+- id: 18
+  category: UNANSWERABLE
+  question: "What is the cost per liter of desalinated water?"
+  expected_answer: "Cost data is not provided in the document"
+  ground_truth_context: []
+  difficulty: Hard
 
-# - id: 19
-#   category: UNANSWERABLE
-#   question: "Which company leads IoT water solutions globally?"
-#   expected_answer: "The document does not mention specific companies"
-#   ground_truth_context: []
-#   difficulty: Hard
+- id: 19
+  category: UNANSWERABLE
+  question: "Which company leads IoT water solutions globally?"
+  expected_answer: "The document does not mention specific companies"
+  ground_truth_context: []
+  difficulty: Hard
 
-# - id: 20
-#   category: UNANSWERABLE
-#   question: "What year did the global water crisis begin?"
-#   expected_answer: "The document does not define a specific starting year"
-#   ground_truth_context: []
-#   difficulty: Hard
+- id: 20
+  category: UNANSWERABLE
+  question: "What year did the global water crisis begin?"
+  expected_answer: "The document does not define a specific starting year"
+  ground_truth_context: []
+  difficulty: Hard
