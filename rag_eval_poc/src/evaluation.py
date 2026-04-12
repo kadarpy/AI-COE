@@ -264,24 +264,43 @@ def compute_deterministic_contextual_recall(
         # For each ground truth, find best match in retrieved
         max_similarities = torch.max(similarity_matrix, dim=1)[0]
         
-        # Threshold: 0.7 = retrieved context contains this ground truth
-        threshold = 0.7
-        covered = (max_similarities >= threshold).sum().item()
+        # ✅ IMPROVEMENT: Use soft similarity scoring instead of binary threshold
+        # Each ground truth concept contributes its maximum similarity to retrieved context
+        # Result: Partial matches get partial credit, not all-or-nothing
+        # Example: 0.95 + 0.45 + 0.80 → recall = (0.95+0.45+0.80)/3 = 0.73
         total = len(ground_truth_context)
         
-        recall = covered / total if total > 0 else 0.0
+        # Soft scoring: mean of best matches for each ground truth chunk
+        recall = float(torch.mean(max_similarities)) if total > 0 else 0.0
+        
+        # For detailed analysis: also track binary matches at threshold
+        threshold = 0.7
+        covered_binary = (max_similarities >= threshold).sum().item()
+        
+        # Create mapping of each ground truth to its best match score
+        concept_similarities = [
+            {
+                "concept": ground_truth_context[i],
+                "best_similarity": float(max_similarities[i]),
+                "covered_binary": bool(max_similarities[i] >= threshold)
+            }
+            for i in range(total)
+        ]
         
         debug = {
             "ground_truth_chunks": total,
             "retrieved_chunks": len(retrieved_context),
-            "covered_chunks": int(covered),
+            "recall_type": "soft_similarity",  # Now using soft scoring
+            "soft_recall": recall,  # Primary metric: mean of similarities
+            "binary_covered_at_0.7": int(covered_binary),  # Secondary: for reference
             "threshold": threshold,
             "avg_similarity": float(torch.mean(max_similarities)),
             "min_similarity": float(torch.min(max_similarities)),
-            "max_similarity": float(torch.max(max_similarities))
+            "max_similarity": float(torch.max(max_similarities)),
+            "concept_details": concept_similarities
         }
         
-        logger.info(f"[DETERMINISTIC_RECALL] {covered}/{total} ground truth chunks found in retrieval (recall={recall:.3f})")
+        logger.info(f"[DETERMINISTIC_RECALL] Soft scoring: {recall:.3f} (avg similarity across {total} concepts, binary @0.7: {covered_binary}/{total})")
         
         return float(recall), debug
         
