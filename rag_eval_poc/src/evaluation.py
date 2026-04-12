@@ -817,7 +817,10 @@ class UIEvaluator:
         self.qa_chain = qa_chain
         self.results = []
         self.test_case_manager = TestCaseManager()
+        # ✅ FIX: Initialize cache manager (was missing)
+        self.cache_manager = get_cache_manager(cache_dir=config.CACHE_DIR)
         logger.info("UIEvaluator initialized (production-grade hybrid system)")
+        logger.info(f"Cache enabled: {config.ENABLE_CACHING} (dir: {config.CACHE_DIR})")
 
     @staticmethod
     def _check_llm_for_metrics():
@@ -860,9 +863,38 @@ class UIEvaluator:
 
         logger.info(f"[EVAL] Test {test_id} ({category}): {question[:50]}... (run {run_number})")
 
-        # ==================== STEP 1: RUN RAG ====================
+        # ==================== STEP 1: CHECK CACHE + RUN RAG ====================
+        # ✅ FIX: Build deterministic cache key from question + model config
+        rag_cache_key = {
+            "question": question,
+            "llm_model": config.LLM_MODEL,
+            "temperature": config.TEMPERATURE,
+            "retriever_k": config.RETRIEVER_K,
+            "retriever_fetch_k": config.RETRIEVER_FETCH_K,
+            "chunk_size": config.DOC_CHUNK_SIZE,
+            "chunk_overlap": config.DOC_CHUNK_OVERLAP,
+            "enable_reranker": config.ENABLE_RERANKER,
+            "reranker_threshold": config.RERANKER_THRESHOLD
+        }
+        
+        # ✅ FIX: Try cache lookup before RAG execution
+        cached_result = None
+        if config.ENABLE_CACHING:
+            cached_result = self.cache_manager.get(rag_cache_key, cache_type="rag")
+            if cached_result:
+                logger.info(f"[CACHE HIT] Retrieved from cache: {rag_cache_key.get('question')[:30]}...")
+        
         try:
-            result = self.qa_chain.invoke({"query": question})
+            # Use cached result if available, otherwise run RAG
+            if cached_result:
+                result = cached_result
+            else:
+                result = self.qa_chain.invoke({"query": question})
+                # ✅ FIX: Cache the result after successful RAG execution
+                if config.ENABLE_CACHING:
+                    self.cache_manager.set(rag_cache_key, result, cache_type="rag")
+                    logger.info(f"[CACHE WRITE] Cached RAG response for: {rag_cache_key.get('question')[:30]}...")
+            
             actual_answer = result.get("result", "")
             source_docs = result.get("source_documents", []) or []
             retrieval_context = extract_context_from_retrieval(source_docs)
