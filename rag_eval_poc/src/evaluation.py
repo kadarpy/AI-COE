@@ -53,7 +53,6 @@ from deepeval.metrics import (
 
 from config import config
 from cache_manager import get_cache_manager, get_cached_rag_response, cache_rag_response
-from retrieval_evaluator import get_retrieval_evaluator
 from reranker import get_reranker
 
 logger = logging.getLogger(__name__)
@@ -308,6 +307,102 @@ def compute_deterministic_contextual_recall(
         logger.warning(f"[RECALL] Deterministic computation failed: {e}, returning 0.0")
         return 0.0, {"error": str(e)}
 
+
+def compute_consolidated_retrieval_metrics(
+    retrieved_context: List[str],
+    ground_truth_context: List[str]
+) -> Dict[str, Any]:
+    """
+    Compute retrieval metrics using UNIFIED soft-similarity approach.
+    
+    ✅ CONSOLIDATION FIX: Uses same soft-scoring logic as deterministic recall
+    
+    This REPLACES the binary-threshold retrieval evaluator.
+    
+    Metrics:
+    - recall_at_k: Mean similarity of ground truth to best retrieved match
+    - precision_at_k: Mean similarity of retrieved docs to best truth match  
+    - hit_rate_at_k: Whether retrieved docs have ANY relevant hits (>0.5)
+    
+    Args:
+        retrieved_context: List of retrieved chunk strings
+        ground_truth_context: List of ground truth concept strings
+        
+    Returns:
+        Dict with soft-scoring metrics
+    """
+    if not retrieved_context or not ground_truth_context:
+        logger.warning(f"[CONSOLIDATED_RETRIEVAL] No context to evaluate")
+        return {
+            "computed": False,
+            "reason": "Empty context",
+            "recall_at_k": 0.0,
+            "precision_at_k": 0.0,
+            "hit_rate_at_k": 0.0
+        }
+    
+    try:
+        from sentence_transformers import SentenceTransformer, util
+        
+        model = SentenceTransformer('BAAI/bge-small-en-v1.5')
+        
+        # Encode all texts
+        gt_embeddings = model.encode(ground_truth_context, convert_to_tensor=True)
+        ret_embeddings = model.encode(retrieved_context, convert_to_tensor=True)
+        
+        # Compute similarity matrices
+        # gt_ret_sim[i, j] = similarity(ground_truth[i], retrieved[j])
+        gt_ret_sim = util.pytorch_cos_sim(gt_embeddings, ret_embeddings)
+        ret_gt_sim = util.pytorch_cos_sim(ret_embeddings, gt_embeddings)
+        
+        # ✅ SOFT RECALL: Mean of best-match similarities for each ground truth
+        # (Same logic as compute_deterministic_contextual_recall)
+        best_matches_gt = torch.max(gt_ret_sim, dim=1)[0]
+        recall = float(torch.mean(best_matches_gt))
+        
+        # ✅ SOFT PRECISION: Mean of best-match similarities for each retrieved doc
+        best_matches_ret = torch.max(ret_gt_sim, dim=1)[0]
+        precision = float(torch.mean(best_matches_ret))
+        
+        # ✅ HIT RATE: Whether any retrieved doc has meaningful overlap
+        # (>0.5 similarity to any ground truth)
+        has_hits = (torch.max(gt_ret_sim) > 0.5).item()
+        hit_rate = 1.0 if has_hits else 0.0
+        
+        metrics = {
+            "computed": True,
+            "recall_at_k": recall,
+            "precision_at_k": precision,
+            "hit_rate_at_k": hit_rate,
+            "consolidation_method": "soft_similarity_unified",
+            "ground_truth_count": len(ground_truth_context),
+            "retrieved_count": len(retrieved_context)
+        }
+        
+        logger.info(
+            f"[CONSOLIDATED_RETRIEVAL] recall={recall:.3f}, "
+            f"precision={precision:.3f}, hit_rate={hit_rate:.3f} "
+            f"(soft scoring, unified with deterministic)"
+        )
+        
+        return metrics
+        
+    except Exception as e:
+        logger.warning(f"[CONSOLIDATED_RETRIEVAL] Computation failed: {e}")
+        return {
+            "computed": False,
+            "reason": str(e),
+            "recall_at_k": 0.0,
+            "precision_at_k": 0.0,
+            "hit_rate_at_k": 0.0
+        }
+
+
+# ========================= DEPRECATED =========================
+# REMOVED: Binary-threshold based retrieval evaluator
+# REASON: Contradicts soft-similarity approach in deterministic recall
+# SOLUTION: Use compute_consolidated_retrieval_metrics() instead
+# ==============================================================
 
 def compute_concept_coverage(
     ground_truth_context: List[str],
@@ -973,23 +1068,23 @@ class UIEvaluator:
             }
 
         # ==================== STEP 2: COMPUTE RETRIEVAL METRICS ====================
+        # ✅ CONSOLIDATION FIX: Use unified soft-similarity metrics (not binary threshold)
         retrieval_metrics = {}
         if config.COMPUTE_RETRIEVAL_METRICS and ground_truth_context:
             try:
-                evaluator = get_retrieval_evaluator(threshold=config.RETRIEVAL_THRESHOLD)
-                retrieval_metrics = evaluator.evaluate_retrieval(
-                    retrieved_chunks=retrieval_context,
-                    ground_truth_context=ground_truth_context,
-                    k=len(retrieval_context)
+                # Use consolidated metrics (soft similarity, matches deterministic recall)
+                retrieval_metrics = compute_consolidated_retrieval_metrics(
+                    retrieved_context=retrieval_context,
+                    ground_truth_context=ground_truth_context
                 )
                 logger.info(
-                    f"[RETRIEVAL] precision={retrieval_metrics.get('precision_at_k', 0)}, "
-                    f"recall={retrieval_metrics.get('recall_at_k', 0)}, "
-                    f"hit_rate={retrieval_metrics.get('hit_rate_at_k', 0)}"
+                    f"[RETRIEVAL] precision={retrieval_metrics.get('precision_at_k', 0):.3f}, "
+                    f"recall={retrieval_metrics.get('recall_at_k', 0):.3f}, "
+                    f"hit_rate={retrieval_metrics.get('hit_rate_at_k', 0):.3f}"
                 )
             except Exception as e:
                 logger.warning(f"[RETRIEVAL] Metrics computation failed: {e}")
-                retrieval_metrics = {"error": str(e)}
+                retrieval_metrics = {"error": str(e), "computed": False}
         else:
             retrieval_metrics = {"computed": False, "reason": "No ground truth context"}
 
