@@ -772,19 +772,51 @@ def interpret_results_no_bias(
 # =========================
 
 def extract_context_from_retrieval(source_documents: Any) -> List[str]:
-    """Extract context from retrieval result."""
+    """
+    Extract context from retrieval result.
+    
+    Handles both:
+    - Fresh LangChain Document objects (from RAG)
+    - Cached/serialized documents (from cache - plain strings/dicts)
+    """
     if not source_documents:
         return []
 
     context = []
     try:
         for doc in source_documents:
+            content = None
+            
+            # ✅ FIX: Handle LangChain Document objects (fresh RAG)
             if hasattr(doc, 'page_content'):
                 content = str(doc.page_content).strip()
-                if content:
-                    context.append(content)
+            
+            # ✅ FIX: Handle cached/serialized documents (from cache)
+            elif isinstance(doc, dict) and 'page_content' in doc:
+                content = str(doc['page_content']).strip()
+            
+            # ✅ FIX: Handle plain strings (fallback for cached content)
+            elif isinstance(doc, str):
+                content = doc.strip()
+            
+            # ✅ FIX: Handle dict with 'content' key (alternative serialization)
+            elif isinstance(doc, dict) and 'content' in doc:
+                content = str(doc['content']).strip()
+            
+            # Last resort: convert to string
+            else:
+                content = str(doc).strip()
+            
+            if content:
+                context.append(content)
+                
     except Exception as e:
         logger.warning(f"Failed to extract context: {e}")
+        # Fallback: try to convert everything to strings
+        try:
+            context = [str(doc).strip() for doc in source_documents if str(doc).strip()]
+        except:
+            pass
 
     return context
 
@@ -921,6 +953,14 @@ class UIEvaluator:
             rerank_scores = result.get("rerank_scores", [])
 
             logger.info(f"[RAG] Retrieved {len(source_docs)} documents (reranked={reranked})")
+            # ✅ FIX: Log retrieval context to verify extraction worked
+            logger.info(f"[RAG] Extracted {len(retrieval_context)} context chunks from {len(source_docs)} docs")
+            if retrieval_context:
+                logger.info(f"[RAG] First context chunk: {retrieval_context[0][:60]}...")
+            else:
+                logger.warning(f"[RAG] WARNING: retrieval_context is empty! source_docs structure: {type(source_docs)}, len={len(source_docs)}")
+                if source_docs:
+                    logger.warning(f"[RAG] First source_doc: {type(source_docs[0])}, content: {str(source_docs[0])[:100]}")
 
         except Exception as e:
             logger.error(f"[RAG] Execution failed: {e}")
