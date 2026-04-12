@@ -49,3 +49,7 @@ chroma_db/
 *.pdf
 *.deepeval
 results/*
+*.cache
+.cache
+.cache_test
+runs/
