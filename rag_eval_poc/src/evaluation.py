@@ -23,6 +23,7 @@ import hashlib
 import time
 import random
 import numpy as np
+import torch
 from pathlib import Path
 from typing import Dict, List, Any, Tuple, Optional
 from datetime import datetime
@@ -216,6 +217,164 @@ def compute_semantic_completeness(expected_answer: str, actual_answer: str) -> f
         logger.warning(f"[COMPLETENESS] Semantic comparison failed: {e}")
         # Fallback: simple length ratio (not ideal but safe)
         return min(len(actual) / max(len(expected), 1), 1.0)
+
+
+# =========================
+# DETERMINISTIC RECALL: Ground Truth Anchor
+# =========================
+
+def compute_deterministic_contextual_recall(
+    ground_truth_context: List[str],
+    retrieved_context: List[str]
+) -> Tuple[float, Dict[str, Any]]:
+    """
+    Compute contextual recall by comparing ground_truth_context vs retrieved_context.
+    
+    DETERMINISTIC (not LLM-based).
+    Uses semantic similarity to check if ground truth concepts were retrieved.
+    
+    Args:
+        ground_truth_context: Ground truth context chunks
+        retrieved_context: Actually retrieved context chunks
+        
+    Returns:
+        Tuple of (score [0,1], debug_info)
+    """
+    if not ground_truth_context:
+        return 1.0, {"note": "No ground truth provided"}
+    
+    if not retrieved_context:
+        logger.warning(f"[RECALL] No context retrieved but {len(ground_truth_context)} ground truth chunks required")
+        return 0.0, {"ground_truth_missing": len(ground_truth_context), "retrieved": 0}
+    
+    try:
+        from sentence_transformers import util, SentenceTransformer
+        
+        model = SentenceTransformer('BAAI/bge-small-en-v1.5')
+        
+        # Embed ground truth
+        gt_embeddings = model.encode(ground_truth_context, convert_to_tensor=True)
+        
+        # Embed retrieved
+        ret_embeddings = model.encode(retrieved_context, convert_to_tensor=True)
+        
+        # Compute similarity matrix: ground_truth x retrieved
+        similarity_matrix = util.pytorch_cos_sim(gt_embeddings, ret_embeddings)
+        
+        # For each ground truth, find best match in retrieved
+        max_similarities = torch.max(similarity_matrix, dim=1)[0]
+        
+        # Threshold: 0.7 = retrieved context contains this ground truth
+        threshold = 0.7
+        covered = (max_similarities >= threshold).sum().item()
+        total = len(ground_truth_context)
+        
+        recall = covered / total if total > 0 else 0.0
+        
+        debug = {
+            "ground_truth_chunks": total,
+            "retrieved_chunks": len(retrieved_context),
+            "covered_chunks": int(covered),
+            "threshold": threshold,
+            "avg_similarity": float(torch.mean(max_similarities)),
+            "min_similarity": float(torch.min(max_similarities)),
+            "max_similarity": float(torch.max(max_similarities))
+        }
+        
+        logger.info(f"[DETERMINISTIC_RECALL] {covered}/{total} ground truth chunks found in retrieval (recall={recall:.3f})")
+        
+        return float(recall), debug
+        
+    except Exception as e:
+        logger.warning(f"[RECALL] Deterministic computation failed: {e}, returning 0.0")
+        return 0.0, {"error": str(e)}
+
+
+def compute_concept_coverage(
+    ground_truth_context: List[str],
+    actual_answer: str
+) -> Tuple[float, Dict[str, Any]]:
+    """
+    Check if required concepts from ground truth are mentioned in the answer.
+    
+    DETERMINISTIC concept checking.
+    
+    Args:
+        ground_truth_context: Ground truth context chunks
+        actual_answer: Model's answer
+        
+    Returns:
+        Tuple of (coverage_score, debug_info)
+    """
+    if not ground_truth_context or not actual_answer:
+        return 1.0, {"note": "Insufficient input"}
+    
+    try:
+        from sentence_transformers import util, SentenceTransformer
+        
+        model = SentenceTransformer('BAAI/bge-small-en-v1.5')
+        
+        # Embed each concept and the answer
+        concept_embeddings = model.encode(ground_truth_context, convert_to_tensor=True)
+        answer_embedding = model.encode([actual_answer], convert_to_tensor=True)
+        
+        # Compute similarity of each concept to the answer
+        similarities = util.pytorch_cos_sim(concept_embeddings, answer_embedding).squeeze()
+        
+        # Threshold for concept mention
+        threshold = 0.5
+        covered = (similarities >= threshold).sum().item()
+        total = len(ground_truth_context)
+        
+        coverage = covered / total if total > 0 else 0.0
+        
+        debug = {
+            "required_concepts": total,
+            "mentioned_concepts": int(covered),
+            "concept_threshold": threshold,
+            "avg_similarity": float(torch.mean(similarities)),
+            "similarity_scores": [float(s) for s in similarities]
+        }
+        
+        uncovered = [gt for gt, sim in zip(ground_truth_context, similarities) if sim < threshold]
+        if uncovered:
+            debug["uncovered_concepts"] = uncovered
+            logger.warning(f"[CONCEPT_COVERAGE] Missing concepts: {uncovered}")
+        
+        return float(coverage), debug
+        
+    except Exception as e:
+        logger.warning(f"[CONCEPT_COVERAGE] Failed: {e}")
+        return 0.0, {"error": str(e)}
+
+
+def compute_retrieval_penalty(
+    retrieval_metrics: Dict[str, Any]
+) -> float:
+    """
+    Compute penalty factor based on retrieval quality.
+    
+    If retrieval failed (recall=0), answers should be penalized.
+    
+    Args:
+        retrieval_metrics: Output from retrieval evaluator
+        
+    Returns:
+        Penalty factor [0, 1] where 1.0 = no penalty
+    """
+    if not retrieval_metrics or retrieval_metrics.get("computed") is False:
+        return 1.0  # No penalty if no metrics
+    
+    recall = retrieval_metrics.get("recall_at_k", 0.5)
+    hit_rate = retrieval_metrics.get("hit_rate_at_k", 0.5)
+    
+    # Penalty: if we didn't retrieve relevant context, answer quality is suspect
+    # penalty_factor = 0.5 + 0.5 * (recall * 0.6 + hit_rate * 0.4)
+    penalty = 0.5 + 0.5 * (recall * 0.6 + hit_rate * 0.4)
+    
+    logger.info(f"[RETRIEVAL_PENALTY] recall={recall:.2f}, hit_rate={hit_rate:.2f} → penalty={penalty:.2f}")
+    
+    return penalty
 
 
 # =========================
@@ -427,13 +586,14 @@ def interpret_results_no_bias(
     category: str,
     is_refusal: bool,
     completeness_score: float = 1.0,
+    retrieval_metrics: Dict[str, Any] = None,
     llm: DeepEvalBaseLLM = None
 ) -> Dict[str, Any]:
     """
-    Interpret evaluation results WITHOUT bias or overrides.
+    Interpret evaluation results WITH proper retrieval grounding.
 
-    NEW: Completeness factor is applied to final score.
-    This prevents over-scoring of partial answers.
+    NEW: Incorporates retrieval quality and concept coverage.
+    This prevents over-scoring when retrieval/concepts are missing.
 
     UNANSWERABLE + Correct Refusal:
       - Hallucination ≈ 0 (good, no hallucination)
@@ -446,22 +606,26 @@ def interpret_results_no_bias(
 
     ANSWERABLE:
       - All metrics contribute to final score
-      - Standard weighted aggregation
-      - Multiplied by completeness factor (prevents partial answer over-scoring)
+      - Deterministic contextual recall (ground truth anchored)
+      - Concept coverage from ground truth
+      - Retrieval penalty applied
+      - Completeness factor for partial answers
 
-    Key Point: NO metric overrides. Only interpretation of what DeepEval says.
+    Key Point: Ground truth is the anchor. LLM metrics are advisory only.
     """
 
     hal_score = metrics.get("hallucination", {}).get("score")
     faith_score = metrics.get("faithfulness", {}).get("score")
     relevancy_score = metrics.get("answer_relevancy", {}).get("score")
     recall_score = metrics.get("contextual_recall", {}).get("score")
+    concept_coverage = metrics.get("concept_coverage", {}).get("score")
 
     interpretation = {
         "category": category,
         "is_refusal": is_refusal,
         "completeness_factor": completeness_score,
         "deepeval_metrics": metrics,
+        "retrieval_metrics": retrieval_metrics or {},
         "reasoning": []
     }
 
@@ -519,12 +683,12 @@ def interpret_results_no_bias(
 
         if metrics.get("hallucination", {}).get("applied") and hal_score is not None:
             applicable_scores["hallucination"] = 1 - hal_score  # Invert (lower hallucination is better)
-            weights["hallucination"] = 0.35
+            weights["hallucination"] = 0.30
             interpretation["reasoning"].append(f"Hallucination={hal_score:.2f} (inverted={1-hal_score:.2f})")
 
         if metrics.get("faithfulness", {}).get("applied") and faith_score is not None:
             applicable_scores["faithfulness"] = faith_score
-            weights["faithfulness"] = 0.25
+            weights["faithfulness"] = 0.20
             interpretation["reasoning"].append(f"Faithfulness={faith_score:.2f}")
 
         if metrics.get("answer_relevancy", {}).get("applied") and relevancy_score is not None:
@@ -532,10 +696,17 @@ def interpret_results_no_bias(
             weights["answer_relevancy"] = 0.20
             interpretation["reasoning"].append(f"AnswerRelevancy={relevancy_score:.2f}")
 
+        # ✅ FIX: Use deterministic recall (NOT LLM-based)
         if metrics.get("contextual_recall", {}).get("applied") and recall_score is not None:
             applicable_scores["contextual_recall"] = recall_score
-            weights["contextual_recall"] = 0.20
-            interpretation["reasoning"].append(f"ContextualRecall={recall_score:.2f}")
+            weights["contextual_recall"] = 0.15
+            interpretation["reasoning"].append(f"ContextualRecall (DETERMINISTIC)={recall_score:.2f}")
+
+        # ✅ FIX: Include concept coverage
+        if concept_coverage is not None:
+            applicable_scores["concept_coverage"] = concept_coverage
+            weights["concept_coverage"] = 0.15
+            interpretation["reasoning"].append(f"ConceptCoverage={concept_coverage:.2f}")
 
         # Compute weighted average only for applied metrics
         if applicable_scores:
@@ -548,12 +719,18 @@ def interpret_results_no_bias(
         else:
             raw_score = 0.0
 
-        # ✅ NEW: Apply completeness factor (prevents partial answer over-scoring)
-        final_score = raw_score * completeness_score
+        # ✅ FIX: Apply retrieval penalty (CRITICAL)
+        retrieval_penalty = compute_retrieval_penalty(retrieval_metrics or {})
+        penalized_score = raw_score * retrieval_penalty
 
-        interpretation["reasoning"].append(f"Weighted aggregate (before completeness): {raw_score:.3f}")
+        interpretation["reasoning"].append(f"Weighted aggregate (before penalties): {raw_score:.3f}")
+        interpretation["reasoning"].append(f"Retrieval penalty factor: {retrieval_penalty:.3f}")
+
+        # ✅ Apply completeness factor (prevents partial answer over-scoring)
+        final_score = penalized_score * completeness_score
+
         interpretation["reasoning"].append(f"Completeness factor: {completeness_score:.3f}")
-        interpretation["reasoning"].append(f"Final score: {raw_score:.3f} × {completeness_score:.3f} = {final_score:.3f}")
+        interpretation["reasoning"].append(f"Final score: {raw_score:.3f} × {retrieval_penalty:.3f} × {completeness_score:.3f} = {final_score:.3f}")
 
         interpretation["final_score"] = round(final_score, 3)
 
@@ -744,6 +921,34 @@ class UIEvaluator:
             applicable_metrics=applicable_metrics
         )
 
+        # ==================== STEP 5B: COMPUTE DETERMINISTIC RECALL METRICS ====================
+        # FIX: Override DeepEval's contextual recall with ground-truth-based metrics
+        det_recall_score, det_recall_debug = compute_deterministic_contextual_recall(
+            ground_truth_context=ground_truth_context,
+            retrieved_context=retrieval_context
+        )
+        
+        concept_coverage_score, concept_debug = compute_concept_coverage(
+            ground_truth_context=ground_truth_context,
+            actual_answer=actual_answer
+        )
+        
+        # Replace DeepEval contextual recall with deterministic version
+        if ground_truth_context:
+            logger.info(
+                f"[METRICS] Replacing DeepEval contextual_recall with deterministic: "
+                f"LLM={metrics.get('contextual_recall', {}).get('score', 'N/A')} → "
+                f"Deterministic={det_recall_score:.3f}"
+            )
+            metrics["contextual_recall"]["score"] = det_recall_score
+            metrics["contextual_recall"]["reason"] = f"Deterministic recall: {det_recall_debug}"
+            metrics["concept_coverage"] = {
+                "score": concept_coverage_score,
+                "reason": f"Concept coverage: {len(ground_truth_context)} concepts, {concept_debug.get('mentioned_concepts', 0)} mentioned",
+                "applied": True,
+                "debug": concept_debug
+            }
+        
         # ==================== STEP 6: INTERPRET RESULTS with PASS/FAIL ====================
         # FIX: Semantic completeness using embeddings (NOT length fallback)
         completeness = compute_semantic_completeness(expected_answer, actual_answer)
@@ -752,7 +957,8 @@ class UIEvaluator:
             metrics=metrics,
             category=category,
             is_refusal=is_refusal,
-            completeness_score=completeness
+            completeness_score=completeness,
+            retrieval_metrics=retrieval_metrics
         )
 
         # ==================== STEP 7: COMPUTE PASS/FAIL DECISION ====================
@@ -854,6 +1060,18 @@ class UIEvaluator:
                 decision["thresholds_failed"].append(f"Answer Relevancy {relevancy_score:.3f} < threshold {config.THRESHOLD_ANSWER_RELEVANCY}")
             else:
                 decision["reasoning"].append(f"✓ Answer Relevancy {relevancy_score:.3f} >= threshold {config.THRESHOLD_ANSWER_RELEVANCY}")
+
+        # ✅ FIX: Check concept coverage (ground truth anchored)
+        concept_coverage = metrics.get("concept_coverage", {}).get("score")
+        if concept_coverage is not None:
+            threshold = getattr(config, "THRESHOLD_CONCEPT_COVERAGE", 0.70)
+            passed = concept_coverage >= threshold
+            decision["thresholds_passed"]["concept_coverage"] = passed
+            if not passed:
+                decision["thresholds_failed"].append(f"Concept Coverage {concept_coverage:.3f} < threshold {threshold}")
+                decision["reasoning"].append(f"✗ Concept Coverage {concept_coverage:.3f} < threshold {threshold} → REQUIRED concepts missing from answer")
+            else:
+                decision["reasoning"].append(f"✓ Concept Coverage {concept_coverage:.3f} >= threshold {threshold}")
 
         # Check retrieval metrics if available
         if retrieval_metrics.get("computed") is not False:
