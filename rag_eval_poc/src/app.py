@@ -557,6 +557,72 @@ def display_sources(sources):
 # EVALUATION UI FUNCTIONS
 # =========================================================
 
+def display_status_badge(status: str):
+    """Display a colored status badge."""
+    if status == "PASS":
+        color = "green"
+        icon = "✅"
+    elif status == "FAIL":
+        color = "red"
+        icon = "❌"
+    elif status == "WARNING":
+        color = "orange"
+        icon = "⚠️"
+    else:
+        color = "gray"
+        icon = "❓"
+    
+    st.markdown(f"<span style='background-color: {color}; padding: 4px 12px; border-radius: 12px; color: white; font-weight: bold;'>{icon} {status}</span>", unsafe_allow_html=True)
+
+def display_pass_fail_decision(decision: Dict[str, Any]):
+    """Display pass/fail decision details."""
+    if not decision:
+        return
+    
+    verdict = decision.get("verdict", "UNKNOWN")
+    
+    # Verdict badge
+    col1, col2, col3 = st.columns([1, 2, 3])
+    with col1:
+        st.markdown("**Decision:**")
+    with col2:
+        display_status_badge(verdict)
+    
+    # Thresholds
+    passed = decision.get("thresholds_passed", {})
+    failed = decision.get("thresholds_failed", [])
+    
+    if passed or failed:
+        st.markdown("**Threshold Analysis:**")
+        
+        for metric, passed_check in passed.items():
+            status = "✅ PASS" if passed_check else "❌ FAIL"
+            st.caption(f"{metric.title()}: {status}")
+        
+        if failed:
+            st.markdown("**Violations:**")
+            for violation in failed:
+                st.error(f"• {violation}", icon="❌")
+    
+    # Reasoning
+    reasoning = decision.get("reasoning", [])
+    if reasoning:
+        st.markdown("**Reasoning:**")
+        for reason in reasoning:
+            st.caption(reason)
+
+def display_system_readiness(readiness: str):
+    """Display system readiness assessment."""
+    readiness_colors = {
+        "PRODUCTION_READY": ("green", "✅ Production Ready"),
+        "READY_WITH_MINOR_ISSUES": ("blue", "🟦 Ready with Minor Issues"),
+        "NEEDS_IMPROVEMENT": ("orange", "⚠️ Needs Improvement"),
+        "NOT_READY": ("red", "❌ Not Ready for Production")
+    }
+    
+    color, label = readiness_colors.get(readiness, ("gray", "Unknown"))
+    st.markdown(f"<h3 style='color: {color};'>{label}</h3>", unsafe_allow_html=True)
+
 def display_metric_card(metric_name: str, score: float):
 
     col1, col2 = st.columns([3, 1])
@@ -1096,7 +1162,46 @@ def display_evaluation_results():
     }
 
     # ==============================
-    # 1. EXECUTIVE SUMMARY
+    # 0. SYSTEM READINESS ASSESSMENT (NEW)
+    # ==============================
+    
+    st.markdown("### 🎯 System Readiness & Decision Status")
+    
+    # Calculate pass/fail statistics
+    pass_fail_pass = sum(1 for r in results if r.get("overall_status") == "PASS")
+    pass_fail_fail = sum(1 for r in results if r.get("overall_status") == "FAIL")
+    pass_fail_warning = sum(1 for r in results if r.get("overall_status") == "WARNING")
+    total = len(results)
+    
+    # Determine system readiness
+    pass_rate = pass_fail_pass / total if total > 0 else 0
+    if pass_rate >= 0.95:
+        readiness = "PRODUCTION_READY"
+    elif pass_rate >= 0.85:
+        readiness = "READY_WITH_MINOR_ISSUES"
+    elif pass_rate >= 0.70:
+        readiness = "NEEDS_IMPROVEMENT"
+    else:
+        readiness = "NOT_READY"
+    
+    # Display system readiness
+    display_system_readiness(readiness)
+    
+    # Pass/Fail summary metrics
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("✅ PASS", pass_fail_pass)
+    with col2:
+        st.metric("⚠️ WARNING", pass_fail_warning)
+    with col3:
+        st.metric("❌ FAIL", pass_fail_fail)
+    with col4:
+        st.metric("Pass Rate", f"{pass_rate*100:.1f}%")
+    
+    st.divider()
+
+    # ==============================
+    # 1. EXECUTIVE SUMMARY / METRIC PERFORMANCE
     # ==============================
 
     st.markdown("### Metric Performance")
@@ -1148,31 +1253,27 @@ def display_evaluation_results():
 
         for result in st.session_state.evaluation_results:
 
-            status = result.get("metrics", {}).get("EvaluationStatus", {}).get("label", "UNKNOWN")
-
-            if status == "PASS":
-                st.success("PASS")
-            elif status == "WARNING":
-                st.warning("WARNING")
-            else:
-                st.error("FAIL")
+            status = result.get("overall_status", result.get("result", "UNKNOWN"))
 
             results_data.append({
                 "ID": result.get("test_id"),
                 "Question": (
-                    result.get("question", "N/A")
-                    if result.get("question") and len(result.get("question")) > 80
+                    result.get("question", "N/A")[:60] + "..."
+                    if result.get("question") and len(result.get("question")) > 60
                     else result.get("question", "N/A")
                 ),
-                "Category": result.get("category", "N/A")
+                "Category": result.get("category", "N/A").upper(),
+                "Status": status,
+                "Score": f"{result.get('final_score', 0):.2f}"
             })
 
         if results_data:
-            st.dataframe(pd.DataFrame(results_data), width='stretch')
+            df_results = pd.DataFrame(results_data)
+            st.dataframe(df_results, width='stretch', use_container_width=True)
         
         # Show detailed results with failure analysis
         st.write("---")
-        st.subheader("Detailed Test Results")
+        st.subheader("Detailed Test Results & Pass/Fail Decisions")
         
         for result in st.session_state.evaluation_results:
             if result.get("error"):
@@ -1182,17 +1283,25 @@ def display_evaluation_results():
                 test_id = result.get("test_id")
                 category = result.get("category", "unknown")
                 question = result.get("question", "")
-                status = "Result"
+                status = result.get("overall_status", result.get("result", "UNKNOWN"))
+                score = result.get("final_score", 0.0)
                 
-                with st.expander(f"Test #{test_id} ({category}) - {status}", expanded=False):
+                with st.expander(f"Test #{test_id} ({category.upper()}) - [{status}] Score: {score:.2f}", expanded=False):
                     col1, col2 = st.columns(2)
                     
                     with col1:
                         st.write(f"**Question:** {question}")
-                        st.write(f"**Expected:** {result.get('expected_answer', 'N/A')}")
+                        st.write(f"**Expected:** {result.get('expected_answer', 'N/A')[:200]}")
                     
                     with col2:
-                        st.write(f"**Actual:** {result.get('actual_answer', 'N/A')}")
+                        st.write(f"**Actual:** {result.get('actual_answer', 'N/A')[:200]}")
+                    
+                    # Pass/Fail Decision
+                    st.divider()
+                    pass_fail = result.get("pass_fail", {})
+                    if pass_fail:
+                        st.write("**Pass/Fail Decision:**")
+                        display_pass_fail_decision(pass_fail)
                     
                     st.write("---")
                     

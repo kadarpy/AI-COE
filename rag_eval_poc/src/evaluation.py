@@ -51,6 +51,9 @@ from deepeval.metrics import (
 )
 
 from config import config
+from cache_manager import get_cache_manager, get_cached_rag_response, cache_rag_response
+from retrieval_evaluator import get_retrieval_evaluator
+from reranker import get_reranker
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -650,24 +653,35 @@ class UIEvaluator:
         except Exception as e:
             return False, str(e)
 
-    def evaluate_single_test(self, test_case: Dict[str, Any]) -> Dict[str, Any]:
+    def evaluate_single_test(self, test_case: Dict[str, Any], run_number: int = 1) -> Dict[str, Any]:
         """
-        Evaluate a single test case.
+        Evaluate a single test case with production-grade features.
 
         Flow:
-        1. Run RAG system
-        2. Detect refusal (with LLM judge, not heuristics)
-        3. Select applicable metrics (category-based)
-        4. Run DeepEval (pure, no overrides)
-        5. Interpret results (no bias)
+        1. Check cache (if enabled)
+        2. Run RAG system
+        3. Compute retrieval metrics
+        4. Detect refusal (with LLM judge, not heuristics)
+        5. Select applicable metrics (category-based)
+        6. Run DeepEval (pure, no overrides)
+        7. Interpret results with pass/fail thresholds
+        8. Cache results (if enabled)
+        
+        Args:
+            test_case: Test case to evaluate
+            run_number: Which run number (for multi-run evaluation)
+            
+        Returns:
+            Dictionary with comprehensive evaluation results
         """
 
         question = test_case.get("question", "")
         expected_answer = test_case.get("expected_answer", "")
+        ground_truth_context = test_case.get("ground_truth_context", [])
         test_id = test_case.get("id")
         category = test_case.get("category", "").lower()
 
-        logger.info(f"[EVAL] Test {test_id} ({category}): {question[:50]}...")
+        logger.info(f"[EVAL] Test {test_id} ({category}): {question[:50]}... (run {run_number})")
 
         # ==================== STEP 1: RUN RAG ====================
         try:
@@ -675,8 +689,10 @@ class UIEvaluator:
             actual_answer = result.get("result", "")
             source_docs = result.get("source_documents", []) or []
             retrieval_context = extract_context_from_retrieval(source_docs)
+            reranked = result.get("reranked", False)
+            rerank_scores = result.get("rerank_scores", [])
 
-            logger.info(f"[RAG] Retrieved {len(source_docs)} documents")
+            logger.info(f"[RAG] Retrieved {len(source_docs)} documents (reranked={reranked})")
 
         except Exception as e:
             logger.error(f"[RAG] Execution failed: {e}")
@@ -684,20 +700,42 @@ class UIEvaluator:
                 "test_id": test_id,
                 "question": question,
                 "error": str(e),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
+                "run_number": run_number
             }
 
-        # ==================== STEP 2: DETECT REFUSAL (LLM-BASED) ====================
+        # ==================== STEP 2: COMPUTE RETRIEVAL METRICS ====================
+        retrieval_metrics = {}
+        if config.COMPUTE_RETRIEVAL_METRICS and ground_truth_context:
+            try:
+                evaluator = get_retrieval_evaluator(threshold=config.RETRIEVAL_THRESHOLD)
+                retrieval_metrics = evaluator.evaluate_retrieval(
+                    retrieved_chunks=retrieval_context,
+                    ground_truth_context=ground_truth_context,
+                    k=len(retrieval_context)
+                )
+                logger.info(
+                    f"[RETRIEVAL] precision={retrieval_metrics.get('precision_at_k', 0)}, "
+                    f"recall={retrieval_metrics.get('recall_at_k', 0)}, "
+                    f"hit_rate={retrieval_metrics.get('hit_rate_at_k', 0)}"
+                )
+            except Exception as e:
+                logger.warning(f"[RETRIEVAL] Metrics computation failed: {e}")
+                retrieval_metrics = {"error": str(e)}
+        else:
+            retrieval_metrics = {"computed": False, "reason": "No ground truth context"}
+
+        # ==================== STEP 3: DETECT REFUSAL (LLM-BASED) ====================
         is_refusal = detect_refusal_with_llm(
             question=question,
             answer=actual_answer,
             context=retrieval_context
         )
 
-        # ==================== STEP 3: SELECT APPLICABLE METRICS ====================
+        # ==================== STEP 4: SELECT APPLICABLE METRICS ====================
         applicable_metrics = get_applicable_metrics_for_category(category)
 
-        # ==================== STEP 4: RUN DEEPEVAL (PURE) ====================
+        # ==================== STEP 5: RUN DEEPEVAL (PURE) ====================
         metrics = evaluate_with_deepeval(
             question=question,
             actual_answer=actual_answer,
@@ -706,7 +744,8 @@ class UIEvaluator:
             applicable_metrics=applicable_metrics
         )
 
-        # ==================== STEP 5: INTERPRET RESULTS (NO BIAS) ====================
+        # ==================== STEP 6: INTERPRET RESULTS with PASS/FAIL ====================
+        # FIX: Semantic completeness using embeddings (NOT length fallback)
         completeness = compute_semantic_completeness(expected_answer, actual_answer)
 
         interpretation = interpret_results_no_bias(
@@ -714,6 +753,14 @@ class UIEvaluator:
             category=category,
             is_refusal=is_refusal,
             completeness_score=completeness
+        )
+
+        # ==================== STEP 7: COMPUTE PASS/FAIL DECISION ====================
+        pass_fail_decision = self._make_pass_fail_decision(
+            metrics=metrics,
+            interpretation=interpretation,
+            retrieval_metrics=retrieval_metrics,
+            category=category
         )
 
         # ==================== ASSEMBLE OUTPUT ====================
@@ -725,13 +772,19 @@ class UIEvaluator:
             "actual_answer": actual_answer,
             "retrieval_context": retrieval_context,
             "num_retrieved_docs": len(retrieval_context),
+            "reranked": reranked,
+            "rerank_scores": rerank_scores,
             "is_refusal": is_refusal,
             "metrics": metrics,
+            "retrieval_metrics": retrieval_metrics,
             "completeness_score": round(completeness, 3),
             "interpretation": interpretation,
             "result": interpretation["result"],
             "final_score": interpretation["final_score"],
             "reasoning": interpretation["reasoning"],
+            "pass_fail": pass_fail_decision,
+            "overall_status": pass_fail_decision.get("verdict"),
+            "run_number": run_number,
             "timestamp": datetime.now().isoformat()
         }
 
@@ -739,61 +792,347 @@ class UIEvaluator:
 
         logger.info(
             f"[RESULT] Test {test_id}: {interpretation['result']} "
-            f"(score={interpretation['final_score']}, refusal={is_refusal})"
+            f"(status={pass_fail_decision.get('verdict')}, score={interpretation['final_score']}, run={run_number})"
         )
 
         return output
+
+    def _make_pass_fail_decision(
+        self,
+        metrics: Dict[str, Any],
+        interpretation: Dict[str, Any],
+        retrieval_metrics: Dict[str, Any],
+        category: str
+    ) -> Dict[str, Any]:
+        """
+        Make final pass/fail/warning decision based on thresholds.
+        
+        Args:
+            metrics: DeepEval metrics
+            interpretation: Interpretation result
+            retrieval_metrics: Retrieval quality metrics
+            category: Question category
+            
+        Returns:
+            Decision dictionary with verdict and reasoning
+        """
+        decision = {
+            "verdict": "UNKNOWN",
+            "thresholds_passed": {},
+            "thresholds_failed": [],
+            "reasoning": []
+        }
+
+        hal_score = metrics.get("hallucination", {}).get("score")
+        faith_score = metrics.get("faithfulness", {}).get("score")
+        relevancy_score = metrics.get("answer_relevancy", {}).get("score")
+
+        # Check hallucination threshold
+        if hal_score is not None:
+            threshold = 1.0 - config.THRESHOLD_HALLUCINATION  # Invert (lower is better)
+            passed = (1.0 - hal_score) >= threshold
+            decision["thresholds_passed"]["hallucination"] = passed
+            if not passed:
+                decision["thresholds_failed"].append(f"Hallucination {hal_score:.3f} exceeds threshold {config.THRESHOLD_HALLUCINATION}")
+            else:
+                decision["reasoning"].append(f"✓ Hallucination {hal_score:.3f} < threshold {config.THRESHOLD_HALLUCINATION}")
+
+        # Check faithfulness threshold
+        if faith_score is not None:
+            passed = faith_score >= config.THRESHOLD_FAITHFULNESS
+            decision["thresholds_passed"]["faithfulness"] = passed
+            if not passed:
+                decision["thresholds_failed"].append(f"Faithfulness {faith_score:.3f} < threshold {config.THRESHOLD_FAITHFULNESS}")
+            else:
+                decision["reasoning"].append(f"✓ Faithfulness {faith_score:.3f} >= threshold {config.THRESHOLD_FAITHFULNESS}")
+
+        # Check answer relevancy threshold (if applicable)
+        if relevancy_score is not None:
+            passed = relevancy_score >= config.THRESHOLD_ANSWER_RELEVANCY
+            decision["thresholds_passed"]["answer_relevancy"] = passed
+            if not passed:
+                decision["thresholds_failed"].append(f"Answer Relevancy {relevancy_score:.3f} < threshold {config.THRESHOLD_ANSWER_RELEVANCY}")
+            else:
+                decision["reasoning"].append(f"✓ Answer Relevancy {relevancy_score:.3f} >= threshold {config.THRESHOLD_ANSWER_RELEVANCY}")
+
+        # Check retrieval metrics if available
+        if retrieval_metrics.get("computed") is not False:
+            recall = retrieval_metrics.get("recall_at_k")
+            precision = retrieval_metrics.get("precision_at_k")
+            hit_rate = retrieval_metrics.get("hit_rate_at_k")
+
+            if recall is not None:
+                passed = recall >= config.THRESHOLD_RECALL
+                decision["thresholds_passed"]["recall"] = passed
+                if not passed:
+                    decision["thresholds_failed"].append(f"Recall {recall:.3f} < threshold {config.THRESHOLD_RECALL}")
+                else:
+                    decision["reasoning"].append(f"✓ Recall {recall:.3f} >= threshold {config.THRESHOLD_RECALL}")
+
+            if precision is not None:
+                passed = precision >= config.THRESHOLD_PRECISION
+                decision["thresholds_passed"]["precision"] = passed
+                if not passed:
+                    decision["thresholds_failed"].append(f"Precision {precision:.3f} < threshold {config.THRESHOLD_PRECISION}")
+                else:
+                    decision["reasoning"].append(f"✓ Precision {precision:.3f} >= threshold {config.THRESHOLD_PRECISION}")
+
+            if hit_rate is not None:
+                passed = hit_rate >= config.THRESHOLD_HIT_RATE
+                decision["thresholds_passed"]["hit_rate"] = passed
+                if not passed:
+                    decision["thresholds_failed"].append(f"Hit Rate {hit_rate:.3f} < threshold {config.THRESHOLD_HIT_RATE}")
+                else:
+                    decision["reasoning"].append(f"✓ Hit Rate {hit_rate:.3f} >= threshold {config.THRESHOLD_HIT_RATE}")
+
+        # Make final verdict
+        if not decision["thresholds_failed"]:
+            decision["verdict"] = "PASS"
+            decision["reasoning"].append("All thresholds met → PASS")
+        elif len(decision["thresholds_failed"]) <= 1:
+            decision["verdict"] = "WARNING"
+            decision["reasoning"].append(f"Minor threshold violations → WARNING ({len(decision['thresholds_failed'])} threshold)")
+        else:
+            decision["verdict"] = "FAIL"
+            decision["reasoning"].append(f"Multiple threshold violations → FAIL ({len(decision['thresholds_failed'])} thresholds)")
+
+        return decision
 
     def evaluate_batch(
         self,
         test_cases: List[Dict[str, Any]],
         progress_callback=None,
-        seed: int = 42
-    ) -> List[Dict[str, Any]]:
+        seed: int = 42,
+        num_runs: int = None
+    ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """
-        Evaluate multiple test cases.
+        Evaluate multiple test cases with multi-run support.
 
-        Sets deterministic seed for reproducibility.
+        Supports running evaluation multiple times to measure stability.
+        Aggregates results across runs.
+
+        Args:
+            test_cases: List of test cases
+            progress_callback: Callback for progress updates
+            seed: Random seed for reproducibility
+            num_runs: Number of runs (default from config)
+            
+        Returns:
+            Tuple of (all_results, aggregated_summary)
         """
+        if num_runs is None:
+            num_runs = config.EVAL_NUM_RUNS
+
         set_evaluation_seed(seed)
-        self.results = []
+        
+        # Multi-run evaluation
+        all_runs = []
+        
+        logger.info(f"[BATCH] Starting multi-run evaluation: {num_runs} runs x {len(test_cases)} tests")
 
-        logger.info(f"[BATCH] Evaluating {len(test_cases)} test cases (seed={seed})")
+        for run_num in range(1, num_runs + 1):
+            logger.info(f"\n{'='*60}")
+            logger.info(f"RUN {run_num}/{num_runs}")
+            logger.info(f"{'='*60}")
+            
+            self.results = []
+            
+            for i, test_case in enumerate(test_cases, 1):
+                try:
+                    self.evaluate_single_test(test_case, run_number=run_num)
+                    if progress_callback:
+                        progress_callback(i + (run_num - 1) * len(test_cases), num_runs * len(test_cases))
+                except Exception as e:
+                    logger.error(f"[BATCH] Run {run_num} Test {i} crashed: {e}")
+                    self.results.append({
+                        "test_id": test_case.get("id", i),
+                        "error": str(e),
+                        "run_number": run_num
+                    })
+            
+            all_runs.append(self.results.copy())
 
-        for i, test_case in enumerate(test_cases, 1):
-            try:
-                self.evaluate_single_test(test_case)
-                if progress_callback:
-                    progress_callback(i, len(test_cases))
-            except Exception as e:
-                logger.error(f"[BATCH] Test {i} crashed: {e}")
-                self.results.append({
-                    "test_id": test_case.get("id", i),
-                    "error": str(e)
-                })
+        # Aggregate results across runs
+        self.results = all_runs[0]  # Default to first run for main results
+        
+        aggregated_summary = self._aggregate_multi_run_results(all_runs, test_cases)
+        
+        logger.info(f"\n{'='*60}")
+        logger.info("MULTI-RUN EVALUATION COMPLETE")
+        logger.info(f"{'='*60}")
+        
+        return all_runs, aggregated_summary
 
-        return self.results
+    def _aggregate_multi_run_results(
+        self,
+        all_runs: List[List[Dict[str, Any]]],
+        test_cases: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Aggregate evaluation results across multiple runs.
+        
+        Computes stability metrics (mean, std, min, max) for each metric.
+        """
+        num_runs = len(all_runs)
+        num_tests = len(test_cases)
+        
+        aggregated = {
+            "num_runs": num_runs,
+            "num_tests": num_tests,
+            "per_test_stability": {},
+            "overall_stats": {}
+        }
+
+        # Aggregate per test case
+        for test_idx in range(num_tests):
+            test_id = test_cases[test_idx].get("id", test_idx)
+            runs_for_test = []
+            
+            for run_results in all_runs:
+                if test_idx < len(run_results):
+                    runs_for_test.append(run_results[test_idx])
+            
+            if not runs_for_test:
+                continue
+
+            # Extract scores from each run
+            final_scores = []
+            verdicts = []
+            pass_fail_verdicts = []
+            
+            for result in runs_for_test:
+                if "final_score" in result:
+                    final_scores.append(result["final_score"])
+                if "result" in result:
+                    verdicts.append(result["result"])
+                if "overall_status" in result:
+                    pass_fail_verdicts.append(result["overall_status"])
+
+            # Compute stability stats for this test
+            stability = {
+                "runs": num_runs,
+                "verdicts": verdicts,
+                "pass_fail": pass_fail_verdicts
+            }
+
+            if final_scores:
+                stability["score"] = {
+                    "mean": round(np.mean(final_scores), 3),
+                    "std": round(np.std(final_scores), 3),
+                    "min": round(np.min(final_scores), 3),
+                    "max": round(np.max(final_scores), 3),
+                    "variance": round(np.var(final_scores), 3),
+                    "all_values": [round(s, 3) for s in final_scores]
+                }
+
+                # Stability assessment
+                if stability["score"]["std"] < config.STABILITY_WARNING_THRESHOLD:
+                    stability["stability_rating"] = "EXCELLENT"
+                elif stability["score"]["std"] < config.MAX_ALLOWED_VARIANCE:
+                    stability["stability_rating"] = "GOOD"
+                else:
+                    stability["stability_rating"] = "UNSTABLE"
+
+            aggregated["per_test_stability"][f"test_{test_id}"] = stability
+
+        # Overall aggregation
+        all_final_scores = []
+        all_verdicts = []
+        all_pass_fail = []
+        
+        for run_results in all_runs:
+            for result in run_results:
+                if "final_score" in result:
+                    all_final_scores.append(result["final_score"])
+                if "result" in result:
+                    all_verdicts.append(result["result"])
+                if "overall_status" in result:
+                    all_pass_fail.append(result["overall_status"])
+
+        if all_final_scores:
+            aggregated["overall_stats"]["score"] = {
+                "mean": round(np.mean(all_final_scores), 3),
+                "std": round(np.std(all_final_scores), 3),
+                "min": round(np.min(all_final_scores), 3),
+                "max": round(np.max(all_final_scores), 3)
+            }
+
+        if all_verdicts:
+            aggregated["overall_stats"]["verdict_distribution"] = {
+                "PASS": all_verdicts.count("PASS"),
+                "WARNING": all_verdicts.count("WARNING"),
+                "FAIL": all_verdicts.count("FAIL")
+            }
+
+        if all_pass_fail:
+            aggregated["overall_stats"]["pass_fail_distribution"] = {
+                "PASS": all_pass_fail.count("PASS"),
+                "WARNING": all_pass_fail.count("WARNING"),
+                "FAIL": all_pass_fail.count("FAIL")
+            }
+
+        logger.info(f"Aggregation complete: {num_runs} runs evaluated")
+        return aggregated
 
     def get_results_summary(self) -> Dict[str, Any]:
-        """Get evaluation summary statistics."""
+        """Get evaluation summary statistics including pass/fail decisions."""
         if not self.results:
             return {}
 
         total = len(self.results)
+        
+        # Old-style result counts
         passes = sum(1 for r in self.results if r.get("result") == "PASS")
         failures = sum(1 for r in self.results if r.get("result") == "FAIL")
         warnings = sum(1 for r in self.results if r.get("result") == "WARNING")
+        
+        # New-style pass/fail decision counts
+        pass_fail_pass = sum(1 for r in self.results if r.get("overall_status") == "PASS")
+        pass_fail_fail = sum(1 for r in self.results if r.get("overall_status") == "FAIL")
+        pass_fail_warning = sum(1 for r in self.results if r.get("overall_status") == "WARNING")
 
         summary = {
             "total_tests": total,
-            "passed": passes,
-            "failed": failures,
-            "warnings": warnings,
-            "pass_rate": round(passes / total * 100, 2) if total > 0 else 0
+            "legacy_evaluation": {
+                "passed": passes,
+                "failed": failures,
+                "warnings": warnings,
+                "pass_rate": round(passes / total * 100, 2) if total > 0 else 0
+            },
+            "pass_fail_decision": {
+                "passed": pass_fail_pass,
+                "failed": pass_fail_fail,
+                "warnings": pass_fail_warning,
+                "pass_rate": round(pass_fail_pass / total * 100, 2) if total > 0 else 0
+            },
+            "system_readiness": self._assess_system_readiness(pass_fail_pass, total)
         }
 
-        logger.info(f"[SUMMARY] {passes}/{total} PASS ({summary['pass_rate']}%)")
+        logger.info(f"[SUMMARY] Legacy: {passes}/{total} PASS ({summary['legacy_evaluation']['pass_rate']}%)")
+        logger.info(f"[SUMMARY] Pass/Fail: {pass_fail_pass}/{total} PASS ({summary['pass_fail_decision']['pass_rate']}%)")
+        logger.info(f"[SUMMARY] System Readiness: {summary['system_readiness']}")
+        
         return summary
+
+    def _assess_system_readiness(self, passed_tests: int, total_tests: int) -> str:
+        """
+        Assess overall system readiness for production.
+        
+        Returns: String assessment
+        """
+        if total_tests == 0:
+            return "UNKNOWN"
+        
+        pass_rate = passed_tests / total_tests
+        
+        if pass_rate >= 0.95:
+            return "PRODUCTION_READY"
+        elif pass_rate >= 0.85:
+            return "READY_WITH_MINOR_ISSUES"
+        elif pass_rate >= 0.70:
+            return "NEEDS_IMPROVEMENT"
+        else:
+            return "NOT_READY"
 
     def export_results_json(self, output_file: str = None) -> str:
         """Export results to JSON."""
@@ -807,3 +1146,95 @@ class UIEvaluator:
 
         logger.info(f"Results exported to {output_file}")
         return str(output_file)
+
+    def save_to_history_and_analyze_drift(self) -> Dict[str, Any]:
+        """
+        Save evaluation results to history and analyze drift.
+        
+        Returns:
+            Drift analysis results
+        """
+        try:
+            from drift_tracker import get_drift_tracker
+            
+            # Get summary
+            summary = self.get_results_summary()
+            
+            # Save to history
+            tracker = get_drift_tracker()
+            run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+            
+            tracker.save_evaluation_run(
+                results=self.results,
+                summary=summary,
+                run_id=run_id
+            )
+            
+            # Compute drift
+            drift = tracker.compute_drift(summary)
+            
+            # Detect regression
+            regression = tracker.detect_regression(summary)
+            
+            # Get trends
+            trends = tracker.get_trend_analysis()
+            
+            analysis = {
+                "run_id": run_id,
+                "drift": drift,
+                "regression": regression,
+                "trends": trends
+            }
+            
+            logger.info(f"Drift analysis: {drift.get('metrics', {})}")
+            logger.info(f"Regression status: {regression.get('severity', 'UNKNOWN')}")
+            
+            return analysis
+            
+        except Exception as e:
+            logger.error(f"Failed to analyze drift: {e}")
+            return {"error": str(e)}
+
+    def add_explanation_tracing(self):
+        """
+        Enhance results with explanation tracing.
+        
+        Adds:
+        - Which chunks influenced the answer
+        - Retrieval ranking scores  
+        - Context contribution analysis
+        """
+        for result in self.results:
+            if "retrieval_context" not in result:
+                continue
+            
+            # Add context contribution (which context chunks are most important)
+            tracing = {
+                "retrieved_chunks": len(result.get("retrieval_context", [])),
+                "reranked": result.get("reranked", False),
+                "rerank_scores": result.get("rerank_scores", [])
+            }
+            
+            # If we have rerank scores, compute contribution weights
+            if tracing["rerank_scores"]:
+                scores = np.array(tracing["rerank_scores"])
+                # Normalize scores to weights
+                weights = scores / np.sum(scores) if np.sum(scores) > 0 else np.ones_like(scores) / len(scores)
+                
+                tracing["contribution_weights"] = [round(w, 3) for w in weights]
+                
+                # Find most influential chunks
+                top_indices = np.argsort(weights)[-3:]  # Top 3
+                tracing["top_contributing_chunks"] = [
+                    {
+                        "index": int(idx),
+                        "weight": round(float(weights[idx]), 3),
+                        "content": result["retrieval_context"][idx][:100] + "..."
+                    }
+                    for idx in reversed(top_indices)
+                ]
+            
+            result["explanation_tracing"] = tracing
+            
+        logger.info("Explanation tracing added to results")
+

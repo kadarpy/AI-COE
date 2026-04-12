@@ -91,6 +91,8 @@ class RAGChain:
             - result: Generated answer
             - source_documents: Retrieved documents (proof of RAG)
             - retrieval_count: Number of documents retrieved
+            - rerank_scores: Reranking scores (if reranker enabled)
+            - is_rag: True (proof this is RAG)
         """
         query = input_dict.get("query", "")
 
@@ -109,14 +111,45 @@ class RAGChain:
                 "result": "The documents do not contain this information.",
                 "source_documents": [],
                 "retrieval_count": 0,
-                "is_rag": True
+                "is_rag": True,
+                "reranked": False
             }
 
-        # STEP 2: CONTEXT BUILDING from retrieved documents
-        logger.debug("STEP 2: Building context from retrieved documents...")
+        # STEP 2: OPTIONAL RERANKING with cross-encoder
+        logger.debug("STEP 2: Applying reranking (if enabled)...")
+        reranked = False
+        rerank_scores = []
+        
+        try:
+            from reranker import apply_reranking
+            original_count = len(docs)
+            reranking_result = apply_reranking(
+                query=query,
+                retrieved_docs=docs,
+                top_k=config.RERANK_TOP_K
+            )
+            
+            if reranking_result:
+                # Extract documents and reranking scores
+                docs = [r["document"] for r in reranking_result]
+                rerank_scores = [r["rerank_score"] for r in reranking_result]
+                reranked = True
+                logger.info(f"Reranked {original_count} → {len(docs)} documents (top_k={config.RERANK_TOP_K})")
+            else:
+                logger.debug("Reranking returned no results, using original docs")
+                # Limit to top_k
+                if len(docs) > config.RERANK_TOP_K:
+                    docs = docs[:config.RERANK_TOP_K]
+        except Exception as e:
+            logger.warning(f"Reranking failed, using original retrieval: {e}")
+            # Fall back to original docs without reranking
+            if len(docs) > config.RERANK_TOP_K:
+                docs = docs[:config.RERANK_TOP_K]
+
+        # STEP 3: CONTEXT BUILDING from retrieved documents
+        logger.debug("STEP 3: Building context from retrieved documents...")
         context_parts = []
-        docs = docs[:config.RERANK_TOP_K]  
-        # final strict selection
+        
         for i, doc in enumerate(docs, 1):
             source_info = doc.metadata.get('source', f'Document {i}')
             context_parts.append(doc.page_content)
@@ -124,8 +157,8 @@ class RAGChain:
         context = "\n\n".join(context_parts)
         logger.debug(f"Context length: {len(context)} characters")
 
-        # STEP 3: PROMPT WITH BALANCED INSTRUCTIONS
-        logger.debug("STEP 3: Creating prompt with RAG instructions...")
+        # STEP 4: PROMPT WITH BALANCED INSTRUCTIONS
+        logger.debug("STEP 4: Creating prompt with RAG instructions...")
         prompt_template = ChatPromptTemplate.from_template(
             """You are a RAG assistant chatbot. Your role is to answer questions using ONLY information from provided documents.
 
@@ -149,8 +182,8 @@ INSTRUCTIONS:
 Answer concisely based on the context provided."""
         )
 
-        # STEP 4: LLM GENERATION (generation happens AFTER retrieval with context)
-        logger.debug("STEP 4: Generating answer with LLM using retrieved context...")
+        # STEP 5: LLM GENERATION (generation happens AFTER retrieval with context)
+        logger.debug("STEP 5: Generating answer with LLM using retrieved context...")
         chain = (
             RunnableParallel(
                 context=lambda x: context,
@@ -170,7 +203,9 @@ Answer concisely based on the context provided."""
             "result": answer,
             "source_documents": docs,
             "retrieval_count": len(docs),
-            "is_rag": True  # Proof this is TRUE RAG
+            "is_rag": True,  # Proof this is TRUE RAG
+            "reranked": reranked,
+            "rerank_scores": rerank_scores
         }
 
 

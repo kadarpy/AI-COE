@@ -109,50 +109,71 @@ logger = logging.getLogger(__name__)
 #         logger.info("Using TF-IDF embeddings (384 dimensions)")
 #         return TFIDFEmbeddings()
 def get_embeddings():
+    """
+    Get embeddings using configured provider (HuggingFace or Ollama).
+    
+    STRICT MODE: If embeddings fail, HARD FAIL immediately.
+    There is NO fallback to TF-IDF (which degrades quality silently).
+    
+    Returns:
+        Embeddings instance
+        
+    Raises:
+        RuntimeError: If embeddings cannot be initialized
+    """
     from config import config
 
-    provider = config.LLM_PROVIDER
+    provider = config.LLM_PROVIDER.lower()
 
     try:
         if provider == "ollama":
             from langchain_community.embeddings import OllamaEmbeddings
             logger.info(f"Using Ollama embeddings with model: {config.EMBEDDING_MODEL}")
-            return OllamaEmbeddings(
+            embeddings = OllamaEmbeddings(
                 model=config.EMBEDDING_MODEL,
                 base_url=config.OLLAMA_BASE_URL
             )
+            # Validate embeddings work by testing
+            try:
+                test_embedding = embeddings.embed_query("test")
+                if not test_embedding or len(test_embedding) == 0:
+                    raise ValueError("Ollama embeddings returned empty result")
+            except Exception as e:
+                raise RuntimeError(f"Ollama embeddings validation failed: {e}")
+            
+            logger.info("✅ Ollama embeddings initialized and validated")
+            return embeddings
 
         else:
-            from langchain.embeddings import HuggingFaceEmbeddings
-            logger.info("Using HuggingFace embeddings")
-            return HuggingFaceEmbeddings(
+            # Default to HuggingFace
+            from langchain_huggingface import HuggingFaceEmbeddings
+            logger.info("Using HuggingFace sentence-transformers embeddings")
+            embeddings = HuggingFaceEmbeddings(
                 model_name="BAAI/bge-base-en-v1.5"
             )
+            # Validate embeddings work by testing
+            try:
+                test_embedding = embeddings.embed_query("test")
+                if not test_embedding or len(test_embedding) == 0:
+                    raise ValueError("HuggingFace embeddings returned empty result")
+            except Exception as e:
+                raise RuntimeError(f"HuggingFace embeddings validation failed: {e}")
+            
+            logger.info("✅ HuggingFace embeddings initialized and validated")
+            return embeddings
 
     except Exception as e:
-        # ⚠️ DEGRADED MODE: TF-IDF fallback
-        logger.warning(f"⚠️  PRIMARY EMBEDDINGS FAILED: {e}")
-        logger.warning("⚠️  FALLING BACK TO TF-IDF (DEGRADED RETRIEVAL QUALITY)")
-        logger.warning("⚠️  Evaluation results may be less accurate with TF-IDF embeddings")
+        # HARD FAIL - No fallback to TF-IDF
+        error_msg = (
+            f"❌ CRITICAL: Embeddings initialization failed\n"
+            f"Provider: {provider}\n"
+            f"Error: {str(e)}\n"
+            f"Action: NO TF-IDF FALLBACK\n"
+            f"Please fix the embeddings configuration and try again."
+        )
+        logger.critical(error_msg)
+        raise RuntimeError(error_msg) from e
 
-        from sklearn.feature_extraction.text import TfidfVectorizer
-        from langchain_core.embeddings import Embeddings
-
-        class TFIDFEmbeddings(Embeddings):
-            def __init__(self):
-                self.vectorizer = TfidfVectorizer(max_features=384)
-                self.fitted = False
-
-            def embed_documents(self, texts):
-                vectors = self.vectorizer.fit_transform(texts).toarray()
-                self.fitted = True
-                return vectors.tolist()
-
-            def embed_query(self, text):
-                return self.vectorizer.transform([text]).toarray()[0].tolist()
-
-        logger.info("⚠️  TF-IDF embeddings initialized (DEGRADED MODE)")
-        return TFIDFEmbeddings()
 
 def build_vector_store(chunks):
     """
@@ -190,20 +211,6 @@ def build_vector_store(chunks):
 
 
         logger.info(f"{len(chunks)} documents successfully stored in vector DB")
-
-        # 🔥 FIX: ensure TF-IDF is fitted after loading
-        try:
-            if hasattr(embeddings, "fitted") and not embeddings.fitted:
-                logger.warning("TF-IDF not fitted → forcing fit using stored documents")
-
-                # pull all documents from DB
-                docs = vectordb.get()["documents"]
-
-                if docs:
-                    embeddings.embed_documents(docs)  # this fits vectorizer
-                    logger.info("TF-IDF successfully fitted after loading")
-        except Exception as e:
-            logger.warning(f"TF-IDF refit failed: {e}")
 
         logger.info("Vector database created successfully")
         logger.debug(f"Persisting database to {config.CHROMA_DB_DIR}")

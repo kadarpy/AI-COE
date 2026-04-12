@@ -66,6 +66,32 @@ class Config:
 
     # ===================== EVALUATION CONFIGURATION =====================
     EVAL_TEST_CASES_PATH = EVALUATION_DIR / "test_cases.yaml"
+    EVAL_NUM_RUNS = int(os.getenv("EVAL_NUM_RUNS", "3"))
+    EVAL_SEED = int(os.getenv("EVAL_SEED", "42"))
+
+    # ===================== RERANKER CONFIGURATION =====================
+    ENABLE_RERANKER = os.getenv("ENABLE_RERANKER", "true").lower() == "true"
+    RERANKER_THRESHOLD = float(os.getenv("RERANKER_THRESHOLD", "0.3"))
+
+    # ===================== CACHE CONFIGURATION =====================
+    ENABLE_CACHING = os.getenv("ENABLE_CACHING", "true").lower() == "true"
+    CACHE_DIR = os.getenv("CACHE_DIR", ".cache")
+
+    # ===================== RETRIEVAL EVALUATION CONFIGURATION =====================
+    RETRIEVAL_THRESHOLD = float(os.getenv("RETRIEVAL_THRESHOLD", "0.7"))
+    COMPUTE_RETRIEVAL_METRICS = os.getenv("COMPUTE_RETRIEVAL_METRICS", "true").lower() == "true"
+
+    # ===================== PASS/FAIL THRESHOLDS =====================
+    THRESHOLD_FAITHFULNESS = float(os.getenv("THRESHOLD_FAITHFULNESS", "0.9"))
+    THRESHOLD_HALLUCINATION = float(os.getenv("THRESHOLD_HALLUCINATION", "0.1"))
+    THRESHOLD_ANSWER_RELEVANCY = float(os.getenv("THRESHOLD_ANSWER_RELEVANCY", "0.85"))
+    THRESHOLD_RECALL = float(os.getenv("THRESHOLD_RECALL", "0.85"))
+    THRESHOLD_PRECISION = float(os.getenv("THRESHOLD_PRECISION", "0.80"))
+    THRESHOLD_HIT_RATE = float(os.getenv("THRESHOLD_HIT_RATE", "0.80"))
+
+    # ===================== STABILITY THRESHOLDS =====================
+    MAX_ALLOWED_VARIANCE = float(os.getenv("MAX_ALLOWED_VARIANCE", "0.15"))
+    STABILITY_WARNING_THRESHOLD = float(os.getenv("STABILITY_WARNING_THRESHOLD", "0.10"))
 
     @staticmethod
     def validate():
