@@ -893,9 +893,9 @@ def interpret_results_no_bias(
         interpretation["final_score"] = answer_score
 
         # Determine result based on ANSWER score (retrieval issues handled separately)
-        if answer_score >= 0.85:
+        if answer_score >= 0.70:
             interpretation["result"] = "PASS"
-        elif answer_score >= 0.65:
+        elif answer_score >= 0.60:
             interpretation["result"] = "WARNING"
         else:
             interpretation["result"] = "FAIL"

@@ -885,35 +885,46 @@ def display_single_test_evaluation():
                 status_color = "🟡"
                 status_bg = "orange"
 
-            # Prominent final score display
+            # Prominent score display (separated answer vs retrieval)
             category = selected_test.get("category", "").lower()
+            
+            # Extract separated scores from new architecture
+            answer_score = result.get("answer_score", final_score)
+            retrieval_score = result.get("retrieval_score")
 
-            # For UNANSWERABLE: don't show completeness (it's not applicable)
+            # For UNANSWERABLE: don't show retrieval metrics (not applicable)
             if category == "unanswerable":
-                col_status, col_score = st.columns(2)
+                col_status, col_answer = st.columns(2)
 
                 with col_status:
                     st.metric(f"{status_color} Status", status)
 
-                with col_score:
-                    st.metric("📊 Final Score", f"{final_score:.3f}")
+                with col_answer:
+                    st.metric("💡 Answer Score", f"{answer_score:.3f}")
             else:
-                # For ANSWERABLE/PARTIAL: show completeness factor
-                completeness = result.get("completeness_score", 1.0)
-                col_status, col_score, col_completeness = st.columns(3)
+                # For ANSWERABLE/PARTIAL: show both answer and retrieval scores
+                col_status, col_answer, col_retrieval = st.columns(3)
 
                 with col_status:
                     st.metric(f"{status_color} Status", status)
 
-                with col_score:
-                    st.metric("📊 Final Score", f"{final_score:.3f}")
+                with col_answer:
+                    st.metric("💡 Answer Score", f"{answer_score:.3f}")
 
-                with col_completeness:
-                    st.metric("✓ Completeness", f"{completeness:.3f}")
+                with col_retrieval:
+                    if retrieval_score is not None:
+                        st.metric("📡 Retrieval Score", f"{retrieval_score:.3f}")
+                    else:
+                        st.metric("📡 Retrieval Score", "N/A")
 
             # Show actual answer
             st.write("---")
             st.write(f"**📝 Actual Answer:** {result['actual_answer']}")
+
+            # ✅ SHOW DIAGNOSIS (NEW: Clean problem identification)
+            diagnosis = result.get("diagnosis")
+            if diagnosis:
+                st.info(f"🧠 **Diagnosis:** {diagnosis}")
 
             # ✅ PRODUCTION UI: Show interpretation reasoning
             st.write("---")
@@ -930,14 +941,24 @@ def display_single_test_evaluation():
 
             # ✅ PRODUCTION UI: Show score breakdown
             st.write("---")
-            st.subheader("📈 Score Breakdown")
+            st.subheader("📈 Score Breakdown (Separated Architecture)")
+            
+            st.info(
+                "**🧠 Key:** Answer Score and Retrieval Score are **INDEPENDENT** — "
+                "not multiplied together. Each measures a different system component. "
+                "They are reported separately for precise diagnostics."
+            )
 
             col_raw, col_factor = st.columns(2)
 
             with col_raw:
-                st.write("**Raw Score (DeepEval metrics):**")
+                st.write("**Answer Score (LLM Quality):**")
+                st.write(f"*No retrieval penalty — measures only answer quality*")
                 metrics = result.get("metrics", {})
                 for metric_name, metric_data in metrics.items():
+                    # Skip ContextualRecall - it's a retrieval metric, not answer quality
+                    if metric_name.lower() == "contextual_recall":
+                        continue
                     score = metric_data.get("score")
                     applied = metric_data.get("applied", True)
                     if score is not None:
@@ -949,15 +970,31 @@ def display_single_test_evaluation():
                         st.write(f"  • {metric_name}: ✗ (error)")
 
             with col_factor:
-                st.write("**Adjustments:**")
-                if category == "unanswerable":
-                    st.write(f"  • Category: UNANSWERABLE")
-                    st.write(f"  • Scoring: Refusal correctness based")
-                    st.write(f"  • No completeness factor applied")
-                else:
-                    st.write(f"  • Completeness factor: {completeness:.3f}")
-                    st.write(f"  • Weighted aggregate × completeness")
-                    st.write(f"  • = final score")
+                st.write("**Retrieval Score (RAG Quality):**")
+                st.write(f"*Independent of answer quality*")
+                retrieval_metrics = result.get("retrieval_metrics", {})
+                metrics = result.get("metrics", {})
+                
+                # Show consolidated retrieval metrics
+                if retrieval_metrics.get("computed", False):
+                    recall = retrieval_metrics.get("recall_at_k")
+                    precision = retrieval_metrics.get("precision_at_k")
+                    hit_rate = retrieval_metrics.get("hit_rate_at_k")
+                    if recall is not None:
+                        st.write(f"  • Recall: {recall:.3f}")
+                    if precision is not None:
+                        st.write(f"  • Precision: {precision:.3f}")
+                    if hit_rate is not None:
+                        st.write(f"  • Hit Rate: {hit_rate:.3f}")
+                
+                # Also show ContextualRecall (from DeepEval) as part of retrieval
+                if metrics.get("contextual_recall", {}).get("applied"):
+                    contextual_score = metrics.get("contextual_recall", {}).get("score")
+                    if contextual_score is not None:
+                        st.write(f"  • Contextual Recall: {contextual_score:.3f}")
+                
+                if not retrieval_metrics.get("computed", False) and not metrics.get("contextual_recall", {}).get("applied"):
+                    st.write("*No ground truth for retrieval metrics*")
 
             # ✅ PRODUCTION UI: Show raw metrics as secondary details
             st.write("---")
