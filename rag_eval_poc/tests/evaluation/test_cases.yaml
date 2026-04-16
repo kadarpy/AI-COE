@@ -172,34 +172,34 @@ test_cases:
 - id: 16
   category: UNANSWERABLE
   question: "What is the exact global water shortage percentage in 2024?"
-  expected_answer: "This information is not provided in the document"
+  expected_answer: "The document does not provide this information"
   ground_truth_context: []
   difficulty: Hard
 
 - id: 17
   category: UNANSWERABLE
   question: "Which country has the highest desalination capacity?"
-  expected_answer: "The document does not specify countries"
+  expected_answer: "The document does not provide this information"
   ground_truth_context: []
   difficulty: Hard
 
 - id: 18
   category: UNANSWERABLE
   question: "What is the cost per liter of desalinated water?"
-  expected_answer: "Cost data is not provided in the document"
+  expected_answer: "The document does not provide this information"
   ground_truth_context: []
   difficulty: Hard
 
 - id: 19
   category: UNANSWERABLE
   question: "Which company leads IoT water solutions globally?"
-  expected_answer: "The document does not mention specific companies"
+  expected_answer: "The document does not provide this information"
   ground_truth_context: []
   difficulty: Hard
 
 - id: 20
   category: UNANSWERABLE
   question: "What year did the global water crisis begin?"
-  expected_answer: "The document does not define a specific starting year"
+  expected_answer: "The document does not provide this information"
   ground_truth_context: []
   difficulty: Hard

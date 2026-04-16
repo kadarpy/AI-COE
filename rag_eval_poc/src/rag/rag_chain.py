@@ -171,7 +171,7 @@ QUESTION:
 INSTRUCTIONS:
 
 1. Answer ONLY using explicitly stated information in the documents
-2. If the answer is not in the documents, respond: "The documents do not contain this information."
+2. If the answer is not in the documents, respond: "The document does not provide this information"
 3. Do NOT infer, speculate, or provide information from training data
 4. Do NOT include assumptions beyond what is written
 5. Keep answers concise and direct
