@@ -831,10 +831,9 @@ def display_single_test_evaluation():
     
     # Select test case
     test_ids = [
-                f" ( {tc['category'].upper()}  |  {tc['difficulty'].upper()} ) "
-                f"Question {tc['id']}: {tc['question']}"
-                for tc in st.session_state.evaluation_test_cases
-                ]
+            f"{tc['category'].upper()} • {tc['difficulty'].upper()}  |  Q{tc['id']}: {tc['question']}"
+            for tc in st.session_state.evaluation_test_cases
+        ]
     selected_idx = st.selectbox("Select Test Case", range(len(test_ids)), 
                                 format_func=lambda i: test_ids[i])
     
@@ -866,7 +865,7 @@ def display_single_test_evaluation():
         
         # Display result
         st.write("---")
-        st.subheader("🎯 Evaluation Results")
+        st.subheader("🎯 `Evaluation Results`")
 
         if "error" in result and result["error"]:
             st.error(f"❌ Error: {result['error']}")
@@ -918,11 +917,11 @@ def display_single_test_evaluation():
 
             # ✅ PRODUCTION UI: Show interpretation reasoning
             st.write("---")
-            st.subheader("📋 Evaluation Reasoning")
+            st.subheader("📋 `Evaluation Reasoning`")
 
             reasoning = result.get("reasoning", [])
             for reason in reasoning:
-                st.write(f"→ {reason}")
+                st.write(f"`{reason}`")
 
             # Show is_refusal status
             is_refusal = result.get("is_refusal", False)

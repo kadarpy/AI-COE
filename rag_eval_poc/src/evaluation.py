@@ -462,33 +462,52 @@ def compute_concept_coverage(
         return 0.0, {"error": str(e)}
 
 
-def compute_retrieval_penalty(
+def compute_retrieval_score(
     retrieval_metrics: Dict[str, Any]
 ) -> float:
     """
-    Compute penalty factor based on retrieval quality.
+    Compute aggregated retrieval quality score (INDEPENDENT of answer quality).
     
-    If retrieval failed (recall=0), answers should be penalized.
+    Uses soft-scoring metrics: recall, precision, hit_rate
     
     Args:
         retrieval_metrics: Output from retrieval evaluator
         
     Returns:
-        Penalty factor [0, 1] where 1.0 = no penalty
+        Retrieval score [0, 1]
     """
     if not retrieval_metrics or retrieval_metrics.get("computed") is False:
-        return 1.0  # No penalty if no metrics
+        return 0.0  # No data = no score
     
-    recall = retrieval_metrics.get("recall_at_k", 0.5)
-    hit_rate = retrieval_metrics.get("hit_rate_at_k", 0.5)
+    scores = {}
+    weights = {}
     
-    # Penalty: if we didn't retrieve relevant context, answer quality is suspect
-    # penalty_factor = 0.5 + 0.5 * (recall * 0.6 + hit_rate * 0.4)
-    penalty = 0.5 + 0.5 * (recall * 0.6 + hit_rate * 0.4)
+    recall = retrieval_metrics.get("recall_at_k")
+    if recall is not None:
+        scores["recall"] = recall
+        weights["recall"] = 0.4
     
-    logger.info(f"[RETRIEVAL_PENALTY] recall={recall:.2f}, hit_rate={hit_rate:.2f} → penalty={penalty:.2f}")
+    precision = retrieval_metrics.get("precision_at_k")
+    if precision is not None:
+        scores["precision"] = precision
+        weights["precision"] = 0.3
     
-    return penalty
+    hit_rate = retrieval_metrics.get("hit_rate_at_k")
+    if hit_rate is not None:
+        scores["hit_rate"] = hit_rate
+        weights["hit_rate"] = 0.3
+    
+    if not scores:
+        return 0.0
+    
+    # Weighted average of available metrics
+    total_weight = sum(weights.values())
+    weighted_sum = sum(scores[k] * weights[k] for k in scores)
+    retrieval_score = weighted_sum / total_weight if total_weight > 0 else 0.0
+    
+    logger.info(f"[RETRIEVAL_SCORE] recall={recall:.2f}, precision={precision:.2f}, hit_rate={hit_rate:.2f} → score={retrieval_score:.3f}")
+    
+    return retrieval_score
 
 
 # =========================
@@ -704,28 +723,34 @@ def interpret_results_no_bias(
     llm: DeepEvalBaseLLM = None
 ) -> Dict[str, Any]:
     """
-    Interpret evaluation results WITH proper retrieval grounding.
+    Interpret evaluation results with SEPARATED SCORES.
 
-    NEW: Incorporates retrieval quality and concept coverage.
-    This prevents over-scoring when retrieval/concepts are missing.
-
+    ✅ NEW ARCHITECTURE: Answer quality and retrieval quality are INDEPENDENT
+    
+    ANSWER SCORE (LLM Performance):
+    - Hallucination: Did the model make up information?
+    - Faithfulness: Was the answer faithful to documents?
+    - Answer Relevancy: Was the answer relevant to the question?
+    - Concept Coverage: Did the answer cover required concepts?
+    - Completeness: How semantically complete is the answer?
+    
+    RETRIEVAL SCORE (RAG System Performance):
+    - Recall: Did we retrieve the right information?
+    - Precision: Were retrieved docs relevant?
+    - Hit Rate: Any relevant docs retrieved?
+    
+    ✅ NO MULTIPLICATION - Report both independently
+    ✅ Clean Diagnostics - Clearly identify the problem source
+    
     UNANSWERABLE + Correct Refusal:
-      - Hallucination ≈ 0 (good, no hallucination)
-      - Faithfulness ≈ 1 (good, faithful to docs)
-      - Score interpretation: PASS (correct evaluation)
-
-    UNANSWERABLE + Hallucination:
-      - Hallucination > 0.3 (bad, made stuff up)
-      - Score interpretation: FAIL (incorrect evaluation)
-
-    ANSWERABLE:
-      - All metrics contribute to final score
-      - Deterministic contextual recall (ground truth anchored)
-      - Concept coverage from ground truth
-      - Retrieval penalty applied
-      - Completeness factor for partial answers
-
-    Key Point: Ground truth is the anchor. LLM metrics are advisory only.
+      - Answer Score ≈ 1.0 (correct non-answer)
+      - Retrieval Score = N/A
+      - Diagnosis: CORRECT REFUSAL
+      
+    ANSWERABLE + Good Answer + Weak Retrieval:
+      - Answer Score ≈ 0.95 (✅ correct)
+      - Retrieval Score ≈ 0.67 (⚠️ weak)
+      - Diagnosis: GOOD ANSWER, WEAK RETRIEVAL
     """
 
     hal_score = metrics.get("hallucination", {}).get("score")
@@ -740,7 +765,10 @@ def interpret_results_no_bias(
         "completeness_factor": completeness_score,
         "deepeval_metrics": metrics,
         "retrieval_metrics": retrieval_metrics or {},
-        "reasoning": []
+        "reasoning": [],
+        "answer_score": None,
+        "retrieval_score": None,
+        "diagnosis": None
     }
 
     # ==================== UNANSWERABLE HANDLING ====================
@@ -756,21 +784,24 @@ def interpret_results_no_bias(
                 # Even when refusing, model made up information
                 interpretation["result"] = "FAIL"
                 interpretation["reason"] = "Correct refusal but contained hallucination"
-                interpretation["final_score"] = 0.0
+                interpretation["answer_score"] = 0.0
+                interpretation["diagnosis"] = "REFUSAL_WITH_HALLUCINATION"
                 interpretation["reasoning"].append(f"Hallucination={hal_score:.2f} > 0.3 → Failed")
 
             elif faith_score is not None and faith_score < 0.7:
                 # Refusal is not faithful to documents
                 interpretation["result"] = "FAIL"
                 interpretation["reason"] = "Refusal was unfaithful to documents"
-                interpretation["final_score"] = 0.0
+                interpretation["answer_score"] = 0.0
+                interpretation["diagnosis"] = "UNFAITHFUL_REFUSAL"
                 interpretation["reasoning"].append(f"Faithfulness={faith_score:.2f} < 0.7 → Failed")
 
             else:
                 # Clean refusal: no hallucination, faithful
                 interpretation["result"] = "PASS"
                 interpretation["reason"] = "Correct and clean refusal - model did not hallucinate"
-                interpretation["final_score"] = 1.0
+                interpretation["answer_score"] = 1.0
+                interpretation["diagnosis"] = "CORRECT_REFUSAL"
                 interpretation["reasoning"].append("Hallucination ≈ 0 and Faithfulness ≈ 1 → Correct refusal")
 
         else:
@@ -779,86 +810,137 @@ def interpret_results_no_bias(
             if hal_score is not None and hal_score > 0.3:
                 interpretation["result"] = "FAIL"
                 interpretation["reason"] = "Should have refused but hallucinated instead"
-                interpretation["final_score"] = 0.0
+                interpretation["answer_score"] = 0.0
+                interpretation["diagnosis"] = "HALLUCINATED_ON_UNANSWERABLE"
                 interpretation["reasoning"].append(f"Hallucination={hal_score:.2f} > 0.3 → Hallucinated on unanswerable")
             else:
                 interpretation["result"] = "FAIL"
                 interpretation["reason"] = "Should have refused but answered"
-                interpretation["final_score"] = 0.0
+                interpretation["answer_score"] = 0.2  # Partial credit for no hallucination, but failed to refuse
+                interpretation["diagnosis"] = "FAILED_TO_REFUSE"
                 interpretation["reasoning"].append("Should have refused but provided answer")
+
+        interpretation["final_score"] = interpretation["answer_score"]
 
     # ==================== ANSWERABLE/PARTIAL HANDLING ====================
     else:
-        interpretation["reasoning"].append(f"[{category.upper()}] Computing aggregated score")
+        interpretation["reasoning"].append(f"[{category.upper()}] SEPARATED SCORING")
 
-        # Only use metrics that were actually applied
-        applicable_scores = {}
-        weights = {}
+        # ✅ ANSWER SCORE: Only answer quality metrics (NO retrieval penalty)
+        # ==========================================
+        
+        answer_scores = {}
+        answer_weights = {}
 
         if metrics.get("hallucination", {}).get("applied") and hal_score is not None:
-            applicable_scores["hallucination"] = 1 - hal_score  # Invert (lower hallucination is better)
-            weights["hallucination"] = 0.30
-            interpretation["reasoning"].append(f"Hallucination={hal_score:.2f} (inverted={1-hal_score:.2f})")
+            answer_scores["hallucination"] = 1 - hal_score  # Invert (lower hallucination is better)
+            answer_weights["hallucination"] = 0.30
+            interpretation["reasoning"].append(f"[ANSWER] Hallucination={hal_score:.2f} (inverted={1-hal_score:.2f})")
 
         if metrics.get("faithfulness", {}).get("applied") and faith_score is not None:
-            applicable_scores["faithfulness"] = faith_score
-            weights["faithfulness"] = 0.20
-            interpretation["reasoning"].append(f"Faithfulness={faith_score:.2f}")
+            answer_scores["faithfulness"] = faith_score
+            answer_weights["faithfulness"] = 0.20
+            interpretation["reasoning"].append(f"[ANSWER] Faithfulness={faith_score:.2f}")
 
         if metrics.get("answer_relevancy", {}).get("applied") and relevancy_score is not None:
-            applicable_scores["answer_relevancy"] = relevancy_score
-            weights["answer_relevancy"] = 0.20
-            interpretation["reasoning"].append(f"AnswerRelevancy={relevancy_score:.2f}")
+            answer_scores["answer_relevancy"] = relevancy_score
+            answer_weights["answer_relevancy"] = 0.20
+            interpretation["reasoning"].append(f"[ANSWER] Answer Relevancy={relevancy_score:.2f}")
 
-        # ✅ FIX: Use deterministic recall (NOT LLM-based)
-        if metrics.get("contextual_recall", {}).get("applied") and recall_score is not None:
-            applicable_scores["contextual_recall"] = recall_score
-            weights["contextual_recall"] = 0.15
-            interpretation["reasoning"].append(f"ContextualRecall (DETERMINISTIC)={recall_score:.2f}")
-
-        # ✅ FIX: Include concept coverage
         if concept_coverage is not None:
-            applicable_scores["concept_coverage"] = concept_coverage
-            weights["concept_coverage"] = 0.15
-            interpretation["reasoning"].append(f"ConceptCoverage={concept_coverage:.2f}")
+            answer_scores["concept_coverage"] = concept_coverage
+            answer_weights["concept_coverage"] = 0.15
+            interpretation["reasoning"].append(f"[ANSWER] Concept Coverage={concept_coverage:.2f}")
 
-        # Compute weighted average only for applied metrics
-        if applicable_scores:
-            total_weight = sum(weights.values())
+        # Apply completeness to answer score
+        if answer_scores:
+            total_weight = sum(answer_weights.values())
             weighted_sum = sum(
-                applicable_scores[metric] * weights[metric]
-                for metric in applicable_scores
+                answer_scores[metric] * answer_weights[metric]
+                for metric in answer_scores
             )
-            raw_score = weighted_sum / total_weight if total_weight > 0 else 0.0
+            answer_score_raw = weighted_sum / total_weight if total_weight > 0 else 0.0
+            answer_score = answer_score_raw * completeness_score  # Completeness applies to answer only
+            interpretation["reasoning"].append(
+                f"[ANSWER] Raw aggregate: {answer_score_raw:.3f}, Completeness: {completeness_score:.3f} → {answer_score:.3f}"
+            )
         else:
-            raw_score = 0.0
+            answer_score = 0.0
+            interpretation["reasoning"].append("[ANSWER] No applicable metrics")
 
-        # ✅ FIX: Apply retrieval penalty (CRITICAL)
-        retrieval_penalty = compute_retrieval_penalty(retrieval_metrics or {})
-        penalized_score = raw_score * retrieval_penalty
+        interpretation["answer_score"] = round(answer_score, 3)
 
-        interpretation["reasoning"].append(f"Weighted aggregate (before penalties): {raw_score:.3f}")
-        interpretation["reasoning"].append(f"Retrieval penalty factor: {retrieval_penalty:.3f}")
+        # ✅ RETRIEVAL SCORE: Only retrieval quality metrics (INDEPENDENT)
+        # ==========================================
+        
+        retrieval_score = compute_retrieval_score(retrieval_metrics or {})
+        interpretation["retrieval_score"] = round(retrieval_score, 3)
+        
+        interpretation["reasoning"].append(
+            f"[RETRIEVAL] Independent score: {retrieval_score:.3f}"
+        )
 
-        # ✅ Apply completeness factor (prevents partial answer over-scoring)
-        final_score = penalized_score * completeness_score
+        # ✅ DIAGNOSIS: Clearly identify what's working and what's not
+        # ==========================================
+        
+        diagnosis = get_evaluation_diagnosis(answer_score, retrieval_score)
+        interpretation["diagnosis"] = diagnosis
+        interpretation["reasoning"].append(f"[DIAGNOSIS] {diagnosis}")
 
-        interpretation["reasoning"].append(f"Completeness factor: {completeness_score:.3f}")
-        interpretation["reasoning"].append(f"Final score: {raw_score:.3f} × {retrieval_penalty:.3f} × {completeness_score:.3f} = {final_score:.3f}")
+        # ✅ Final score for sorting/reporting (use answer score primarily)
+        # ==========================================
+        
+        interpretation["final_score"] = answer_score
 
-        interpretation["final_score"] = round(final_score, 3)
-
-        # Determine result based on score
-        if final_score >= 0.85:
+        # Determine result based on ANSWER score (retrieval issues handled separately)
+        if answer_score >= 0.85:
             interpretation["result"] = "PASS"
-        elif final_score >= 0.65:
+        elif answer_score >= 0.65:
             interpretation["result"] = "WARNING"
         else:
             interpretation["result"] = "FAIL"
 
-    interpretation["reasoning"].append(f"Result: {interpretation['result']} (score={interpretation['final_score']})")
+    interpretation["reasoning"].append(f"Result: {interpretation['result']} (answer_score={interpretation.get('answer_score', 'N/A')}, retrieval_score={interpretation.get('retrieval_score', 'N/A')})")
 
     return interpretation
+
+
+def get_evaluation_diagnosis(answer_score: float, retrieval_score: float) -> str:
+    """
+    Generate diagnostic message based on answer and retrieval scores.
+    
+    Shows clearly what's working and what's not.
+    
+    Args:
+        answer_score: LLM output quality [0, 1]
+        retrieval_score: RAG retrieval quality [0, 1]
+        
+    Returns:
+        Diagnostic string
+    """
+    answer_good = answer_score >= 0.85
+    answer_medium = answer_score >= 0.65
+    retrieval_good = retrieval_score >= 0.80
+    retrieval_medium = retrieval_score >= 0.60
+    
+    if answer_good and retrieval_good:
+        return "✅ SYSTEM WORKING WELL (good answer, strong retrieval)"
+    elif answer_good and retrieval_medium:
+        return "⚠️  GOOD ANSWER, MEDIOCRE RETRIEVAL (fix: reranking, retrieval logic)"
+    elif answer_good and not retrieval_medium:
+        return "⚠️  GOOD ANSWER, WEAK RETRIEVAL (fix: embedding model, chunk size, k parameter)"
+    elif answer_medium and retrieval_good:
+        return "⚠️  DECENT ANSWER, STRONG RETRIEVAL (fix: LLM quality, prompt engineering)"
+    elif answer_medium and retrieval_medium:
+        return "⚠️  MEDIOCRE SYSTEM (both need improvement)"
+    elif answer_medium and not retrieval_medium:
+        return "❌ LLM+RETRIEVAL DEGRADED (fix: everything)"
+    elif not answer_medium and retrieval_good:
+        return "❌ WEAK ANSWER, STRONG RETRIEVAL (fix: LLM reasoning, hallucination control)"
+    elif not answer_medium and retrieval_medium:
+        return "❌ SYSTEMIC FAILURE - LLM ISSUE (good docs, bad answer generation)"
+    else:
+        return "❌ SYSTEMIC FAILURE - COMPLETE (both answer and retrieval broken)"
 
 
 
@@ -1171,6 +1253,11 @@ class UIEvaluator:
             "retrieval_metrics": retrieval_metrics,
             "completeness_score": round(completeness, 3),
             "interpretation": interpretation,
+            # ✅ NEW: Separated scores
+            "answer_score": interpretation.get("answer_score"),
+            "retrieval_score": interpretation.get("retrieval_score"),
+            "diagnosis": interpretation.get("diagnosis"),
+            # Legacy fields (for backward compatibility)
             "result": interpretation["result"],
             "final_score": interpretation["final_score"],
             "reasoning": interpretation["reasoning"],
@@ -1184,7 +1271,9 @@ class UIEvaluator:
 
         logger.info(
             f"[RESULT] Test {test_id}: {interpretation['result']} "
-            f"(status={pass_fail_decision.get('verdict')}, score={interpretation['final_score']}, run={run_number})"
+            f"(answer={interpretation.get('answer_score', 'N/A')}, "
+            f"retrieval={interpretation.get('retrieval_score', 'N/A')}, "
+            f"status={pass_fail_decision.get('verdict')}, run={run_number})"
         )
 
         return output
@@ -1197,7 +1286,16 @@ class UIEvaluator:
         category: str
     ) -> Dict[str, Any]:
         """
-        Make final pass/fail/warning decision based on thresholds.
+        Make final pass/fail/warning decision based on INDEPENDENT thresholds.
+        
+        ✅ NEW: Separates answer quality failures from retrieval quality failures
+        
+        This allows accurate diagnosis:
+        - PASS: Both answer and retrieval good
+        - ANSWER_FAIL: Answer quality issues (hallucination, faithfulness, etc)
+        - RETRIEVAL_FAIL: Retrieval quality issues (poor recall/precision)
+        - HYBRID_FAIL: Both answer and retrieval problematic
+        - WARNING: Minor issues in one or both
         
         Args:
             metrics: DeepEval metrics
@@ -1210,6 +1308,8 @@ class UIEvaluator:
         """
         decision = {
             "verdict": "UNKNOWN",
+            "answer_quality": None,    # PASS, WARNING, FAIL
+            "retrieval_quality": None, # PASS, WARNING, FAIL
             "thresholds_passed": {},
             "thresholds_failed": [],
             "reasoning": []
@@ -1218,48 +1318,68 @@ class UIEvaluator:
         hal_score = metrics.get("hallucination", {}).get("score")
         faith_score = metrics.get("faithfulness", {}).get("score")
         relevancy_score = metrics.get("answer_relevancy", {}).get("score")
+        answer_failures = []
+        answer_passes = []
 
+        # ==================== ANSWER QUALITY CHECKS ====================
+        
         # Check hallucination threshold
         if hal_score is not None:
             threshold = 1.0 - config.THRESHOLD_HALLUCINATION  # Invert (lower is better)
             passed = (1.0 - hal_score) >= threshold
             decision["thresholds_passed"]["hallucination"] = passed
             if not passed:
-                decision["thresholds_failed"].append(f"Hallucination {hal_score:.3f} exceeds threshold {config.THRESHOLD_HALLUCINATION}")
+                answer_failures.append(f"Hallucination {hal_score:.3f} exceeds threshold {config.THRESHOLD_HALLUCINATION}")
             else:
-                decision["reasoning"].append(f"✓ Hallucination {hal_score:.3f} < threshold {config.THRESHOLD_HALLUCINATION}")
+                answer_passes.append(f"Hallucination {hal_score:.3f} < threshold {config.THRESHOLD_HALLUCINATION}")
 
         # Check faithfulness threshold
         if faith_score is not None:
             passed = faith_score >= config.THRESHOLD_FAITHFULNESS
             decision["thresholds_passed"]["faithfulness"] = passed
             if not passed:
-                decision["thresholds_failed"].append(f"Faithfulness {faith_score:.3f} < threshold {config.THRESHOLD_FAITHFULNESS}")
+                answer_failures.append(f"Faithfulness {faith_score:.3f} < threshold {config.THRESHOLD_FAITHFULNESS}")
             else:
-                decision["reasoning"].append(f"✓ Faithfulness {faith_score:.3f} >= threshold {config.THRESHOLD_FAITHFULNESS}")
+                answer_passes.append(f"Faithfulness {faith_score:.3f} >= threshold {config.THRESHOLD_FAITHFULNESS}")
 
         # Check answer relevancy threshold (if applicable)
         if relevancy_score is not None:
             passed = relevancy_score >= config.THRESHOLD_ANSWER_RELEVANCY
             decision["thresholds_passed"]["answer_relevancy"] = passed
             if not passed:
-                decision["thresholds_failed"].append(f"Answer Relevancy {relevancy_score:.3f} < threshold {config.THRESHOLD_ANSWER_RELEVANCY}")
+                answer_failures.append(f"Answer Relevancy {relevancy_score:.3f} < threshold {config.THRESHOLD_ANSWER_RELEVANCY}")
             else:
-                decision["reasoning"].append(f"✓ Answer Relevancy {relevancy_score:.3f} >= threshold {config.THRESHOLD_ANSWER_RELEVANCY}")
+                answer_passes.append(f"Answer Relevancy {relevancy_score:.3f} >= threshold {config.THRESHOLD_ANSWER_RELEVANCY}")
 
-        # ✅ FIX: Check concept coverage (ground truth anchored)
+        # Check concept coverage (ground truth anchored)
         concept_coverage = metrics.get("concept_coverage", {}).get("score")
         if concept_coverage is not None:
             threshold = getattr(config, "THRESHOLD_CONCEPT_COVERAGE", 0.70)
             passed = concept_coverage >= threshold
             decision["thresholds_passed"]["concept_coverage"] = passed
             if not passed:
-                decision["thresholds_failed"].append(f"Concept Coverage {concept_coverage:.3f} < threshold {threshold}")
-                decision["reasoning"].append(f"✗ Concept Coverage {concept_coverage:.3f} < threshold {threshold} → REQUIRED concepts missing from answer")
+                answer_failures.append(f"Concept Coverage {concept_coverage:.3f} < threshold {threshold}")
             else:
-                decision["reasoning"].append(f"✓ Concept Coverage {concept_coverage:.3f} >= threshold {threshold}")
+                answer_passes.append(f"Concept Coverage {concept_coverage:.3f} >= threshold {threshold}")
 
-        # Check retrieval metrics if available
+        # Determine answer quality verdict
+        if not answer_failures:
+            decision["answer_quality"] = "PASS"
+            decision["reasoning"].append("[ANSWER QUALITY] ✅ PASS - All thresholds met")
+        elif len(answer_failures) == 1:
+            decision["answer_quality"] = "WARNING"
+            decision["reasoning"].append(f"[ANSWER QUALITY] ⚠️  WARNING - Minor issue: {answer_failures[0]}")
+        else:
+            decision["answer_quality"] = "FAIL"
+            decision["reasoning"].append(f"[ANSWER QUALITY] ❌ FAIL - Multiple issues:")
+            for failure in answer_failures:
+                decision["reasoning"].append(f"  • {failure}")
+
+        # ==================== RETRIEVAL QUALITY CHECKS ====================
+        
+        retrieval_failures = []
+        retrieval_passes = []
+        
         if retrieval_metrics.get("computed") is not False:
             recall = retrieval_metrics.get("recall_at_k")
             precision = retrieval_metrics.get("precision_at_k")
@@ -1269,36 +1389,62 @@ class UIEvaluator:
                 passed = recall >= config.THRESHOLD_RECALL
                 decision["thresholds_passed"]["recall"] = passed
                 if not passed:
-                    decision["thresholds_failed"].append(f"Recall {recall:.3f} < threshold {config.THRESHOLD_RECALL}")
+                    retrieval_failures.append(f"Recall {recall:.3f} < threshold {config.THRESHOLD_RECALL}")
                 else:
-                    decision["reasoning"].append(f"✓ Recall {recall:.3f} >= threshold {config.THRESHOLD_RECALL}")
+                    retrieval_passes.append(f"Recall {recall:.3f} >= threshold {config.THRESHOLD_RECALL}")
 
             if precision is not None:
                 passed = precision >= config.THRESHOLD_PRECISION
                 decision["thresholds_passed"]["precision"] = passed
                 if not passed:
-                    decision["thresholds_failed"].append(f"Precision {precision:.3f} < threshold {config.THRESHOLD_PRECISION}")
+                    retrieval_failures.append(f"Precision {precision:.3f} < threshold {config.THRESHOLD_PRECISION}")
                 else:
-                    decision["reasoning"].append(f"✓ Precision {precision:.3f} >= threshold {config.THRESHOLD_PRECISION}")
+                    retrieval_passes.append(f"Precision {precision:.3f} >= threshold {config.THRESHOLD_PRECISION}")
 
             if hit_rate is not None:
                 passed = hit_rate >= config.THRESHOLD_HIT_RATE
                 decision["thresholds_passed"]["hit_rate"] = passed
                 if not passed:
-                    decision["thresholds_failed"].append(f"Hit Rate {hit_rate:.3f} < threshold {config.THRESHOLD_HIT_RATE}")
+                    retrieval_failures.append(f"Hit Rate {hit_rate:.3f} < threshold {config.THRESHOLD_HIT_RATE}")
                 else:
-                    decision["reasoning"].append(f"✓ Hit Rate {hit_rate:.3f} >= threshold {config.THRESHOLD_HIT_RATE}")
+                    retrieval_passes.append(f"Hit Rate {hit_rate:.3f} >= threshold {config.THRESHOLD_HIT_RATE}")
 
-        # Make final verdict
-        if not decision["thresholds_failed"]:
+            # Determine retrieval quality verdict
+            if not retrieval_failures:
+                decision["retrieval_quality"] = "PASS"
+                decision["reasoning"].append("[RETRIEVAL QUALITY] ✅ PASS - All metrics good")
+            elif len(retrieval_failures) == 1:
+                decision["retrieval_quality"] = "WARNING"
+                decision["reasoning"].append(f"[RETRIEVAL QUALITY] ⚠️  WARNING - {retrieval_failures[0]}")
+            else:
+                decision["retrieval_quality"] = "FAIL"
+                decision["reasoning"].append(f"[RETRIEVAL QUALITY] ❌ FAIL - Multiple issues:")
+                for failure in retrieval_failures:
+                    decision["reasoning"].append(f"  • {failure}")
+        else:
+            decision["retrieval_quality"] = "UNKNOWN"
+            decision["reasoning"].append("[RETRIEVAL QUALITY] ⓘ No retrieval metrics available")
+
+        # ==================== COMBINED VERDICT ====================
+        
+        answer_ok = decision["answer_quality"] in ["PASS", "WARNING"]
+        retrieval_ok = decision["retrieval_quality"] in ["PASS", "WARNING", "UNKNOWN"]
+
+        if answer_ok and retrieval_ok:
             decision["verdict"] = "PASS"
-            decision["reasoning"].append("All thresholds met → PASS")
-        elif len(decision["thresholds_failed"]) <= 1:
-            decision["verdict"] = "WARNING"
-            decision["reasoning"].append(f"Minor threshold violations → WARNING ({len(decision['thresholds_failed'])} threshold)")
+            decision["diagnosis"] = interpretation.get("diagnosis", "System working well")
+        elif answer_ok and not retrieval_ok:
+            decision["verdict"] = "RETRIEVAL_FAIL"
+            decision["diagnosis"] = "Good answer but weak retrieval - fix vector store/reranking"
+        elif not answer_ok and retrieval_ok:
+            decision["verdict"] = "ANSWER_FAIL"
+            decision["diagnosis"] = "Weak answer despite good retrieval - fix LLM/prompt"
         else:
             decision["verdict"] = "FAIL"
-            decision["reasoning"].append(f"Multiple threshold violations → FAIL ({len(decision['thresholds_failed'])} thresholds)")
+            decision["diagnosis"] = "Both answer and retrieval quality issues - systemic problem"
+
+        decision["reasoning"].append(f"\n[FINAL VERDICT] {decision['verdict']} - {decision['diagnosis']}")
+        decision["thresholds_failed"] = answer_failures + retrieval_failures
 
         return decision
 
