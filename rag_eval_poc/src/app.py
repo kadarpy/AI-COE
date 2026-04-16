@@ -596,7 +596,7 @@ def display_pass_fail_decision(decision: Dict[str, Any]):
         st.markdown("**Threshold Analysis:**")
         
         for metric, passed_check in passed.items():
-            status = "✅ PASS" if passed_check else "❌ FAIL"
+            status = "PASS" if passed_check else "FAIL"
             st.caption(f"{metric.title()}: {status}")
         
         if failed:
@@ -614,10 +614,10 @@ def display_pass_fail_decision(decision: Dict[str, Any]):
 def display_system_readiness(readiness: str):
     """Display system readiness assessment."""
     readiness_colors = {
-        "PRODUCTION_READY": ("green", "✅ Production Ready"),
+        "PRODUCTION_READY": ("green", "Production Ready"),
         "READY_WITH_MINOR_ISSUES": ("blue", "🟦 Ready with Minor Issues"),
         "NEEDS_IMPROVEMENT": ("orange", "⚠️ Needs Improvement"),
-        "NOT_READY": ("red", "❌ Not Ready for Production")
+        "NOT_READY": ("red", " Not Ready for Production")
     }
     
     color, label = readiness_colors.get(readiness, ("gray", "Unknown"))
@@ -865,12 +865,12 @@ def display_single_test_evaluation():
         
         # Display result
         st.write("---")
-        st.subheader("🎯 `Evaluation Results`")
+        st.subheader("`Evaluation Results`")
 
         if "error" in result and result["error"]:
-            st.error(f"❌ Error: {result['error']}")
+            st.error(f"Error: {result['error']}")
         else:
-            # ✅ PRODUCTION UI: Show final score FIRST and PROMINENTLY
+            #  PRODUCTION UI: Show final score FIRST and PROMINENTLY
             status = result.get("result", "?").upper()
             final_score = result.get("final_score", 0.0)
 
@@ -900,7 +900,7 @@ def display_single_test_evaluation():
                     st.metric(f"{status_color} Status", status)
 
                 with col_answer:
-                    st.metric("💡 Answer Score", f"{answer_score:.3f}")
+                    st.metric("Answer Score", f"{answer_score:.3f}")
             else:
                 # For ANSWERABLE/PARTIAL: show both answer and retrieval scores
                 col_status, col_answer, col_retrieval = st.columns(3)
@@ -909,42 +909,42 @@ def display_single_test_evaluation():
                     st.metric(f"{status_color} Status", status)
 
                 with col_answer:
-                    st.metric("💡 Answer Score", f"{answer_score:.3f}")
+                    st.metric("Answer Score", f"{answer_score:.3f}")
 
                 with col_retrieval:
                     if retrieval_score is not None:
-                        st.metric("📡 Retrieval Score", f"{retrieval_score:.3f}")
+                        st.metric("Retrieval Score", f"{retrieval_score:.3f}")
                     else:
-                        st.metric("📡 Retrieval Score", "N/A")
+                        st.metric("Retrieval Score", "N/A")
 
             # Show actual answer
             st.write("---")
-            st.write(f"**📝 Actual Answer:** {result['actual_answer']}")
+            st.write(f"**Actual Answer:** {result['actual_answer']}")
 
-            # ✅ SHOW DIAGNOSIS (NEW: Clean problem identification)
+            #  SHOW DIAGNOSIS (NEW: Clean problem identification)
             diagnosis = result.get("diagnosis")
             if diagnosis:
-                st.info(f"🧠 **Diagnosis:** {diagnosis}")
+                st.info(f"**Diagnosis:** {diagnosis}")
 
-            # ✅ PRODUCTION UI: Show interpretation reasoning
+            #  PRODUCTION UI: Show interpretation reasoning
             st.write("---")
-            st.subheader("📋 `Evaluation Reasoning`")
+            st.subheader("`Evaluation Reasoning`")
 
             reasoning = result.get("reasoning", [])
             for reason in reasoning:
-                st.write(f"`{reason}`")
+                st.write(f"{reason}")
 
             # Show is_refusal status
             is_refusal = result.get("is_refusal", False)
             if selected_test.get("category", "").lower() == "unanswerable":
-                st.write(f"🔍 Refusal Detection: {'✅ Detected (LLM-based)' if is_refusal else '❌ Not detected'}")
+                st.write(f"**Refusal Detection:** {'Detected (LLM-based)' if is_refusal else ' Not detected'}")
 
-            # ✅ PRODUCTION UI: Show score breakdown
+            #  PRODUCTION UI: Show score breakdown
             st.write("---")
-            st.subheader("📈 Score Breakdown (Separated Architecture)")
+            st.subheader("Score Breakdown (Separated Architecture)")
             
             st.info(
-                "**🧠 Key:** Answer Score and Retrieval Score are **INDEPENDENT** — "
+                "**Key:** Answer Score and Retrieval Score are **INDEPENDENT** — "
                 "not multiplied together. Each measures a different system component. "
                 "They are reported separately for precise diagnostics."
             )
@@ -952,8 +952,8 @@ def display_single_test_evaluation():
             col_raw, col_factor = st.columns(2)
 
             with col_raw:
-                st.write("**Answer Score (LLM Quality):**")
-                st.write(f"*No retrieval penalty — measures only answer quality*")
+                st.write("***Answer Score (LLM Quality):***")
+                st.write(f"**No retrieval penalty — measures only answer quality**")
                 metrics = result.get("metrics", {})
                 for metric_name, metric_data in metrics.items():
                     # Skip ContextualRecall - it's a retrieval metric, not answer quality
@@ -996,9 +996,9 @@ def display_single_test_evaluation():
                 if not retrieval_metrics.get("computed", False) and not metrics.get("contextual_recall", {}).get("applied"):
                     st.write("*No ground truth for retrieval metrics*")
 
-            # ✅ PRODUCTION UI: Show raw metrics as secondary details
+            #  PRODUCTION UI: Show raw metrics as secondary details
             st.write("---")
-            st.subheader("📊 Detailed Metrics")
+            st.subheader("Detailed Metrics")
 
             col1, col2 = st.columns(2)
             metric_count = 0
@@ -1021,7 +1021,7 @@ def display_single_test_evaluation():
 
             # Show retrieved context
             st.write("---")
-            with st.expander("📄 Retrieved Context Details"):
+            with st.expander("Retrieved Context Details"):
                 context = result.get("retrieval_context", [])
                 if context:
                     st.write(f"Retrieved {len(context)} document(s):")
@@ -1201,7 +1201,7 @@ def display_evaluation_results():
     # 0. SYSTEM READINESS ASSESSMENT (NEW)
     # ==============================
     
-    st.markdown("### 🎯 System Readiness & Decision Status")
+    st.markdown("System Readiness & Decision Status")
     
     # Calculate pass/fail statistics
     pass_fail_pass = sum(1 for r in results if r.get("overall_status") == "PASS")
@@ -1226,11 +1226,11 @@ def display_evaluation_results():
     # Pass/Fail summary metrics
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("✅ PASS", pass_fail_pass)
+        st.metric("PASS", pass_fail_pass)
     with col2:
-        st.metric("⚠️ WARNING", pass_fail_warning)
+        st.metric("WARNING", pass_fail_warning)
     with col3:
-        st.metric("❌ FAIL", pass_fail_fail)
+        st.metric("FAIL", pass_fail_fail)
     with col4:
         st.metric("Pass Rate", f"{pass_rate*100:.1f}%")
     

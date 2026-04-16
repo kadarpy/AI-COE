@@ -9,12 +9,12 @@ Architecture:
   Layer 4: ResultInterpretation (no overrides, only interpretation)
 
 Design Principles:
-  ✅ NO metric overrides - DeepEval outputs are trusted
-  ✅ NO heuristic shortcuts - Use LLM-based logic
-  ✅ NO evaluation leakage - Strict information control
-  ✅ NO artificial bias - Honest aggregation only
-  ✅ Complete Transparency - Document architecture honestly
-  ✅ Production-Grade - Deterministic, reproducible, reliable
+   NO metric overrides - DeepEval outputs are trusted
+   NO heuristic shortcuts - Use LLM-based logic
+   NO evaluation leakage - Strict information control
+   NO artificial bias - Honest aggregation only
+   Complete Transparency - Document architecture honestly
+   Production-Grade - Deterministic, reproducible, reliable
 """
 
 import json
@@ -263,7 +263,7 @@ def compute_deterministic_contextual_recall(
         # For each ground truth, find best match in retrieved
         max_similarities = torch.max(similarity_matrix, dim=1)[0]
         
-        # ✅ IMPROVEMENT: Use soft similarity scoring instead of binary threshold
+        #  IMPROVEMENT: Use soft similarity scoring instead of binary threshold
         # Each ground truth concept contributes its maximum similarity to retrieved context
         # Result: Partial matches get partial credit, not all-or-nothing
         # Example: 0.95 + 0.45 + 0.80 → recall = (0.95+0.45+0.80)/3 = 0.73
@@ -315,7 +315,7 @@ def compute_consolidated_retrieval_metrics(
     """
     Compute retrieval metrics using UNIFIED soft-similarity approach.
     
-    ✅ CONSOLIDATION FIX: Uses same soft-scoring logic as deterministic recall
+     CONSOLIDATION FIX: Uses same soft-scoring logic as deterministic recall
     
     This REPLACES the binary-threshold retrieval evaluator.
     
@@ -355,16 +355,16 @@ def compute_consolidated_retrieval_metrics(
         gt_ret_sim = util.pytorch_cos_sim(gt_embeddings, ret_embeddings)
         ret_gt_sim = util.pytorch_cos_sim(ret_embeddings, gt_embeddings)
         
-        # ✅ SOFT RECALL: Mean of best-match similarities for each ground truth
+        #  SOFT RECALL: Mean of best-match similarities for each ground truth
         # (Same logic as compute_deterministic_contextual_recall)
         best_matches_gt = torch.max(gt_ret_sim, dim=1)[0]
         recall = float(torch.mean(best_matches_gt))
         
-        # ✅ SOFT PRECISION: Mean of best-match similarities for each retrieved doc
+        #  SOFT PRECISION: Mean of best-match similarities for each retrieved doc
         best_matches_ret = torch.max(ret_gt_sim, dim=1)[0]
         precision = float(torch.mean(best_matches_ret))
         
-        # ✅ HIT RATE: Whether any retrieved doc has meaningful overlap
+        #  HIT RATE: Whether any retrieved doc has meaningful overlap
         # (>0.5 similarity to any ground truth)
         has_hits = (torch.max(gt_ret_sim) > 0.5).item()
         hit_rate = 1.0 if has_hits else 0.0
@@ -725,7 +725,7 @@ def interpret_results_no_bias(
     """
     Interpret evaluation results with SEPARATED SCORES.
 
-    ✅ NEW ARCHITECTURE: Answer quality and retrieval quality are INDEPENDENT
+     NEW ARCHITECTURE: Answer quality and retrieval quality are INDEPENDENT
     
     ANSWER SCORE (LLM Performance):
     - Hallucination: Did the model make up information?
@@ -739,8 +739,8 @@ def interpret_results_no_bias(
     - Precision: Were retrieved docs relevant?
     - Hit Rate: Any relevant docs retrieved?
     
-    ✅ NO MULTIPLICATION - Report both independently
-    ✅ Clean Diagnostics - Clearly identify the problem source
+     NO MULTIPLICATION - Report both independently
+     Clean Diagnostics - Clearly identify the problem source
     
     UNANSWERABLE + Correct Refusal:
       - Answer Score ≈ 1.0 (correct non-answer)
@@ -748,7 +748,7 @@ def interpret_results_no_bias(
       - Diagnosis: CORRECT REFUSAL
       
     ANSWERABLE + Good Answer + Weak Retrieval:
-      - Answer Score ≈ 0.95 (✅ correct)
+      - Answer Score ≈ 0.95 ( correct)
       - Retrieval Score ≈ 0.67 (⚠️ weak)
       - Diagnosis: GOOD ANSWER, WEAK RETRIEVAL
     """
@@ -826,7 +826,7 @@ def interpret_results_no_bias(
     else:
         interpretation["reasoning"].append(f"[{category.upper()}] SEPARATED SCORING")
 
-        # ✅ ANSWER SCORE: Only answer quality metrics (NO retrieval penalty)
+        #  ANSWER SCORE: Only answer quality metrics (NO retrieval penalty)
         # ==========================================
         
         answer_scores = {}
@@ -870,7 +870,7 @@ def interpret_results_no_bias(
 
         interpretation["answer_score"] = round(answer_score, 3)
 
-        # ✅ RETRIEVAL SCORE: Only retrieval quality metrics (INDEPENDENT)
+        #  RETRIEVAL SCORE: Only retrieval quality metrics (INDEPENDENT)
         # ==========================================
         
         retrieval_score = compute_retrieval_score(retrieval_metrics or {})
@@ -880,14 +880,14 @@ def interpret_results_no_bias(
             f"[RETRIEVAL] Independent score: {retrieval_score:.3f}"
         )
 
-        # ✅ DIAGNOSIS: Clearly identify what's working and what's not
+        #  DIAGNOSIS: Clearly identify what's working and what's not
         # ==========================================
         
         diagnosis = get_evaluation_diagnosis(answer_score, retrieval_score)
         interpretation["diagnosis"] = diagnosis
         interpretation["reasoning"].append(f"[DIAGNOSIS] {diagnosis}")
 
-        # ✅ Final score for sorting/reporting (use answer score primarily)
+        #  Final score for sorting/reporting (use answer score primarily)
         # ==========================================
         
         interpretation["final_score"] = answer_score
@@ -924,7 +924,7 @@ def get_evaluation_diagnosis(answer_score: float, retrieval_score: float) -> str
     retrieval_medium = retrieval_score >= 0.60
     
     if answer_good and retrieval_good:
-        return "✅ SYSTEM WORKING WELL (good answer, strong retrieval)"
+        return " SYSTEM WORKING WELL (good answer, strong retrieval)"
     elif answer_good and retrieval_medium:
         return "⚠️  GOOD ANSWER, MEDIOCRE RETRIEVAL (fix: reranking, retrieval logic)"
     elif answer_good and not retrieval_medium:
@@ -934,13 +934,13 @@ def get_evaluation_diagnosis(answer_score: float, retrieval_score: float) -> str
     elif answer_medium and retrieval_medium:
         return "⚠️  MEDIOCRE SYSTEM (both need improvement)"
     elif answer_medium and not retrieval_medium:
-        return "❌ LLM+RETRIEVAL DEGRADED (fix: everything)"
+        return " LLM+RETRIEVAL DEGRADED (fix: everything)"
     elif not answer_medium and retrieval_good:
-        return "❌ WEAK ANSWER, STRONG RETRIEVAL (fix: LLM reasoning, hallucination control)"
+        return " WEAK ANSWER, STRONG RETRIEVAL (fix: LLM reasoning, hallucination control)"
     elif not answer_medium and retrieval_medium:
-        return "❌ SYSTEMIC FAILURE - LLM ISSUE (good docs, bad answer generation)"
+        return " SYSTEMIC FAILURE - LLM ISSUE (good docs, bad answer generation)"
     else:
-        return "❌ SYSTEMIC FAILURE - COMPLETE (both answer and retrieval broken)"
+        return " SYSTEMIC FAILURE - COMPLETE (both answer and retrieval broken)"
 
 
 
@@ -964,19 +964,19 @@ def extract_context_from_retrieval(source_documents: Any) -> List[str]:
         for doc in source_documents:
             content = None
             
-            # ✅ FIX: Handle LangChain Document objects (fresh RAG)
+            #  FIX: Handle LangChain Document objects (fresh RAG)
             if hasattr(doc, 'page_content'):
                 content = str(doc.page_content).strip()
             
-            # ✅ FIX: Handle cached/serialized documents (from cache)
+            #  FIX: Handle cached/serialized documents (from cache)
             elif isinstance(doc, dict) and 'page_content' in doc:
                 content = str(doc['page_content']).strip()
             
-            # ✅ FIX: Handle plain strings (fallback for cached content)
+            #  FIX: Handle plain strings (fallback for cached content)
             elif isinstance(doc, str):
                 content = doc.strip()
             
-            # ✅ FIX: Handle dict with 'content' key (alternative serialization)
+            #  FIX: Handle dict with 'content' key (alternative serialization)
             elif isinstance(doc, dict) and 'content' in doc:
                 content = str(doc['content']).strip()
             
@@ -1045,7 +1045,7 @@ class UIEvaluator:
         self.qa_chain = qa_chain
         self.results = []
         self.test_case_manager = TestCaseManager()
-        # ✅ FIX: Initialize cache manager (was missing)
+        #  FIX: Initialize cache manager (was missing)
         self.cache_manager = get_cache_manager(cache_dir=config.CACHE_DIR)
         logger.info("UIEvaluator initialized (production-grade hybrid system)")
         logger.info(f"Cache enabled: {config.ENABLE_CACHING} (dir: {config.CACHE_DIR})")
@@ -1092,7 +1092,7 @@ class UIEvaluator:
         logger.info(f"[EVAL] Test {test_id} ({category}): {question[:50]}... (run {run_number})")
 
         # ==================== STEP 1: CHECK CACHE + RUN RAG ====================
-        # ✅ FIX: Build deterministic cache key from question + model config
+        #  FIX: Build deterministic cache key from question + model config
         rag_cache_key = {
             "question": question,
             "llm_model": config.LLM_MODEL,
@@ -1105,7 +1105,7 @@ class UIEvaluator:
             "reranker_threshold": config.RERANKER_THRESHOLD
         }
         
-        # ✅ FIX: Try cache lookup before RAG execution
+        #  FIX: Try cache lookup before RAG execution
         cached_result = None
         if config.ENABLE_CACHING:
             cached_result = self.cache_manager.get(rag_cache_key, cache_type="rag")
@@ -1118,7 +1118,7 @@ class UIEvaluator:
                 result = cached_result
             else:
                 result = self.qa_chain.invoke({"query": question})
-                # ✅ FIX: Cache the result after successful RAG execution
+                #  FIX: Cache the result after successful RAG execution
                 if config.ENABLE_CACHING:
                     self.cache_manager.set(rag_cache_key, result, cache_type="rag")
                     logger.info(f"[CACHE WRITE] Cached RAG response for: {rag_cache_key.get('question')[:30]}...")
@@ -1130,7 +1130,7 @@ class UIEvaluator:
             rerank_scores = result.get("rerank_scores", [])
 
             logger.info(f"[RAG] Retrieved {len(source_docs)} documents (reranked={reranked})")
-            # ✅ FIX: Log retrieval context to verify extraction worked
+            #  FIX: Log retrieval context to verify extraction worked
             logger.info(f"[RAG] Extracted {len(retrieval_context)} context chunks from {len(source_docs)} docs")
             if retrieval_context:
                 logger.info(f"[RAG] First context chunk: {retrieval_context[0][:60]}...")
@@ -1150,7 +1150,7 @@ class UIEvaluator:
             }
 
         # ==================== STEP 2: COMPUTE RETRIEVAL METRICS ====================
-        # ✅ CONSOLIDATION FIX: Use unified soft-similarity metrics (not binary threshold)
+        #  CONSOLIDATION FIX: Use unified soft-similarity metrics (not binary threshold)
         retrieval_metrics = {}
         if config.COMPUTE_RETRIEVAL_METRICS and ground_truth_context:
             try:
@@ -1253,7 +1253,7 @@ class UIEvaluator:
             "retrieval_metrics": retrieval_metrics,
             "completeness_score": round(completeness, 3),
             "interpretation": interpretation,
-            # ✅ NEW: Separated scores
+            #  NEW: Separated scores
             "answer_score": interpretation.get("answer_score"),
             "retrieval_score": interpretation.get("retrieval_score"),
             "diagnosis": interpretation.get("diagnosis"),
@@ -1288,7 +1288,7 @@ class UIEvaluator:
         """
         Make final pass/fail/warning decision based on INDEPENDENT thresholds.
         
-        ✅ NEW: Separates answer quality failures from retrieval quality failures
+         NEW: Separates answer quality failures from retrieval quality failures
         
         This allows accurate diagnosis:
         - PASS: Both answer and retrieval good
@@ -1365,13 +1365,13 @@ class UIEvaluator:
         # Determine answer quality verdict
         if not answer_failures:
             decision["answer_quality"] = "PASS"
-            decision["reasoning"].append("[ANSWER QUALITY] ✅ PASS - All thresholds met")
+            decision["reasoning"].append("[ANSWER QUALITY]  PASS - All thresholds met")
         elif len(answer_failures) == 1:
             decision["answer_quality"] = "WARNING"
             decision["reasoning"].append(f"[ANSWER QUALITY] ⚠️  WARNING - Minor issue: {answer_failures[0]}")
         else:
             decision["answer_quality"] = "FAIL"
-            decision["reasoning"].append(f"[ANSWER QUALITY] ❌ FAIL - Multiple issues:")
+            decision["reasoning"].append(f"[ANSWER QUALITY]  FAIL - Multiple issues:")
             for failure in answer_failures:
                 decision["reasoning"].append(f"  • {failure}")
 
@@ -1412,13 +1412,13 @@ class UIEvaluator:
             # Determine retrieval quality verdict
             if not retrieval_failures:
                 decision["retrieval_quality"] = "PASS"
-                decision["reasoning"].append("[RETRIEVAL QUALITY] ✅ PASS - All metrics good")
+                decision["reasoning"].append("[RETRIEVAL QUALITY]  PASS - All metrics good")
             elif len(retrieval_failures) == 1:
                 decision["retrieval_quality"] = "WARNING"
                 decision["reasoning"].append(f"[RETRIEVAL QUALITY] ⚠️  WARNING - {retrieval_failures[0]}")
             else:
                 decision["retrieval_quality"] = "FAIL"
-                decision["reasoning"].append(f"[RETRIEVAL QUALITY] ❌ FAIL - Multiple issues:")
+                decision["reasoning"].append(f"[RETRIEVAL QUALITY]  FAIL - Multiple issues:")
                 for failure in retrieval_failures:
                     decision["reasoning"].append(f"  • {failure}")
         else:

@@ -141,7 +141,7 @@ def get_embeddings():
             except Exception as e:
                 raise RuntimeError(f"Ollama embeddings validation failed: {e}")
             
-            logger.info("✅ Ollama embeddings initialized and validated")
+            logger.info(" Ollama embeddings initialized and validated")
             return embeddings
 
         else:
@@ -159,13 +159,13 @@ def get_embeddings():
             except Exception as e:
                 raise RuntimeError(f"HuggingFace embeddings validation failed: {e}")
             
-            logger.info("✅ HuggingFace embeddings initialized and validated")
+            logger.info(" HuggingFace embeddings initialized and validated")
             return embeddings
 
     except Exception as e:
         # HARD FAIL - No fallback to TF-IDF
         error_msg = (
-            f"❌ CRITICAL: Embeddings initialization failed\n"
+            f" CRITICAL: Embeddings initialization failed\n"
             f"Provider: {provider}\n"
             f"Error: {str(e)}\n"
             f"Action: NO TF-IDF FALLBACK\n"
