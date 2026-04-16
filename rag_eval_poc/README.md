@@ -190,7 +190,7 @@ rag_eval_poc/
 │   ├── app.py                         # Streamlit web interface
 │   ├── api.py                         # FastAPI REST server
 │   ├── config.py                      # Configuration management
-│   ├── demo.py                        # RAG bot demonstration
+│   ├── orchestrator.py                        # RAG bot demonstration
 │   ├── evaluation.py                  # Evaluation orchestration
 │   ├── validators.py                  # Input/output validation
 │   │
@@ -399,7 +399,7 @@ Results & Visualization
 | `rag/loader.py` | PDF/TXT document loading |
 | `rag/vector_store.py` | ChromaDB initialization & retrieval |
 | `rag/rag_chain.py` | LangChain retrieval chain |
-| `demo.py` | RAG bot orchestration |
+| `orchestrator.py` | RAG bot orchestration |
 | `evaluation.py` | DeepEval integration & scoring |
 | `validators.py` | Input/output validation |
 | `app.py` | Streamlit UI |

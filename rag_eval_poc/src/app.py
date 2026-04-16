@@ -13,7 +13,7 @@ from typing import Dict, List, Any
 
 from config import config
 from validators import InputValidator, OutputValidator
-from demo import RAGBotDemo
+from orchestrator import RAGBotDemo
 from evaluation import UIEvaluator, TestCaseManager
 
 logging.basicConfig(level=logging.INFO)
