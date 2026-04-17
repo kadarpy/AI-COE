@@ -23,7 +23,9 @@ class Config:
     DATA_DIR = BASE_DIR / "data"
     DOCUMENTS_DIR = DATA_DIR
     CHROMA_DB_DIR = BASE_DIR / "chroma_db"
-    EVALUATION_DIR = PROJECT_ROOT / "tests" / "evaluation"
+    EVALUATION_DIR = PROJECT_ROOT / "tests"
+    TEST_DIR = EVALUATION_DIR / "test_cases.yaml"
+    
     DEFAULT_DOCUMENT_PATH = DATA_DIR / "document.txt"
     ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md"}
 
@@ -65,7 +67,7 @@ class Config:
     LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
     # ===================== EVALUATION CONFIGURATION =====================
-    EVAL_TEST_CASES_PATH = EVALUATION_DIR / "test_cases.yaml"
+    EVAL_TEST_CASES_PATH = TEST_DIR
     EVAL_NUM_RUNS = int(os.getenv("EVAL_NUM_RUNS", "3"))
     EVAL_SEED = int(os.getenv("EVAL_SEED", "42"))
 

@@ -16,8 +16,9 @@ from validators import InputValidator, OutputValidator
 from orchestrator import RAGBotDemo
 from evaluation import UIEvaluator, TestCaseManager
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
 st.set_page_config(
     page_title="RAG Intelligence Platform",
@@ -379,7 +380,7 @@ def sidebar_settings():
     # LLM CONFIG
     # =========================
     with st.sidebar.expander("LLM Config"):
-        temp = st.slider("Temperature", 0.0, 1.0, float(config.TEMPERATURE))
+        temp = st.slider("Temperature Rag", 0.0, 1.0, float(config.TEMPERATURE))
         k = st.slider("Retriever K", 1, 10, config.RETRIEVER_K)
         st.caption(f"Temp={temp}, K={k}")
 

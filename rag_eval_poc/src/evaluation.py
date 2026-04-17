@@ -97,7 +97,7 @@ class GroqDeepEvalLLM(DeepEvalBaseLLM):
         response = self.client.chat.completions.create(
             model=self.model_name,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.0  # deterministic
+            temperature=config.EVAL_TEMPERATURE  # deterministic
         )
         return response.choices[0].message.content
 
