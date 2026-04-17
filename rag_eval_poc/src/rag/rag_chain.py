@@ -2,6 +2,8 @@
 RAG Chain module for RAG Bot - TRUE RAG with mandatory retrieval
 """
 import logging
+import os
+from pathlib import Path
 from typing import Dict, Any, List
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough
@@ -146,6 +148,12 @@ class RAGChain:
             if len(docs) > config.RERANK_TOP_K:
                 docs = docs[:config.RERANK_TOP_K]
 
+        def load_instructions():
+            path = Path("config/instructions.txt")
+            if path.exists():
+                return path.read_text().strip()
+            return "Answer using only provided context."
+
         # STEP 3: CONTEXT BUILDING from retrieved documents
         logger.debug("STEP 3: Building context from retrieved documents...")
         context_parts = []
@@ -156,38 +164,29 @@ class RAGChain:
         
         context = "\n\n".join(context_parts)
         logger.debug(f"Context length: {len(context)} characters")
+        instructions = input_dict.get("instructions") or load_instructions()
 
         # STEP 4: PROMPT WITH BALANCED INSTRUCTIONS
         logger.debug("STEP 4: Creating prompt with RAG instructions...")
         prompt_template = ChatPromptTemplate.from_template(
-            """You are a RAG assistant chatbot. Your role is to answer questions using ONLY information from provided documents.
-
-CONTEXT:
-{context}
-
-QUESTION:
-{question}
-
-INSTRUCTIONS:
-
-1. Answer ONLY using explicitly stated information in the documents
-2. If the answer is not in the documents, respond: "The document does not provide this information"
-3. Do NOT infer, speculate, or provide information from training data
-4. Do NOT include assumptions beyond what is written
-5. Keep answers concise and direct
-6. Provide brief explanations ONLY if the question explicitly asks for "explain", "why", or "how"
-7. Do NOT include document names, page numbers, or citations unless explicitly asked
-8. If asked for sources, provide ONLY the document names without additional commentary
-
-Answer concisely based on the context provided."""
-        )
+            """
+            CONTEXT:
+            {context}
+            
+            QUESTION:
+            {question}
+            
+            INSTRUCTIONS:
+            {instructions}
+            """)
 
         # STEP 5: LLM GENERATION (generation happens AFTER retrieval with context)
         logger.debug("STEP 5: Generating answer with LLM using retrieved context...")
         chain = (
             RunnableParallel(
                 context=lambda x: context,
-                question=RunnablePassthrough()
+                question=RunnablePassthrough(),
+                instructions=lambda x: instructions
             )
             | prompt_template
             | self.llm
