@@ -380,7 +380,7 @@ def sidebar_settings():
     # LLM CONFIG
     # =========================
     with st.sidebar.expander("LLM Config"):
-        temp = st.slider("Temperature Rag", 0.0, 1.0, float(config.TEMPERATURE))
+        temp = st.slider("Temperature", 0.0, 1.0, float(config.TEMPERATURE))
         k = st.slider("Retriever K", 1, 10, config.RETRIEVER_K)
         st.caption(f"Temp={temp}, K={k}")
 
