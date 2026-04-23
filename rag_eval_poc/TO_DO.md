@@ -212,6 +212,7 @@ Document everything using the AICOE POC Output Template. Focus on:
 * **References:** GenAI Concepts Glossary (AICOE-11) for terminology. AICOE POC Output Template for final deliverable format.
 
 ## Acceptance Criteria
+
 | Criteria                       | Threshold                                                    |
 | ------------------------------ | ------------------------------------------------------------ |
 | Working RAG bot                | Answers questions from loaded documents                      |

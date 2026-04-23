@@ -13,10 +13,7 @@ from rag.vector_store import build_vector_store, load_vector_store
 from rag.rag_chain import build_rag_chain
 
 # Configure logging
-logging.basicConfig(
-    level=getattr(logging, config.LOG_LEVEL),
-    format=config.LOG_FORMAT
-)
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,9 +25,10 @@ class RAGBotDemo:
         Initialize RAG Bot
         
         Args:
-            pdf_path: Path to PDF file (optional)
+            pdf_path: Path to document file (PDF or TXT) - defaults to document.txt
         """
-        self.pdf_path = pdf_path
+        # Default to document.txt instead of sample_doc.pdf
+        self.pdf_path = pdf_path or str(config.DEFAULT_DOCUMENT_PATH)
         self.qa_chain = None
         self.vectordb = None
 
@@ -48,17 +46,26 @@ class RAGBotDemo:
             logger.info("Configuration validated successfully")
 
             # Check if vector store exists
+            # Check if vector store exists
             if config.CHROMA_DB_DIR.exists():
-                logger.info("Loading existing vector store...")
-                self.vectordb = load_vector_store()
-            elif self.pdf_path:
-                logger.info(f"Loading documents from {self.pdf_path}...")
-                chunks = load_documents(self.pdf_path)
-                logger.info("Building vector store...")
-                self.vectordb = build_vector_store(chunks)
+                try:
+                    self.vectordb = load_vector_store()
+
+                    if self.vectordb._collection.count() == 0:
+                        logger.warning("Empty vector DB detected → rebuilding")
+                        raise ValueError("Empty DB")
+
+                except Exception as e:
+                    logger.warning(f"Vector DB invalid → rebuilding: {e}")
+                    chunks = load_documents(self.pdf_path)
+                    self.vectordb = build_vector_store(chunks)
+
             else:
-                logger.error("No vector store found and no PDF path provided")
-                return False
+                # THIS BLOCK WAS MISSING (ROOT CAUSE)
+                logger.info("No existing vector DB found → building new one")
+
+                chunks = load_documents(self.pdf_path)
+                self.vectordb = build_vector_store(chunks)
 
             # Build RAG chain
             logger.info("Building RAG chain...")
@@ -109,7 +116,7 @@ class RAGBotDemo:
 
         except Exception as e:
             logger.error(f"Error processing question: {e}", exc_info=True)
-            print(f" Error processing question: {e}")
+            logger.error(f"Error processing question: {e}", exc_info=True)
             return None
 
     def display_response(self, response: dict):
@@ -121,13 +128,13 @@ class RAGBotDemo:
         sources = response.get("source_documents", [])
 
         print("\n" + "=" * 80)
-        print("📝 ANSWER:")
+        print("ANSWER:")
         print("=" * 80)
         print(answer)
 
         if sources:
             print("\n" + "=" * 80)
-            print("📚 SOURCES:")
+            print("SOURCES:")
             print("=" * 80)
             for i, doc in enumerate(sources, 1):
                 metadata = doc.metadata
@@ -140,7 +147,7 @@ class RAGBotDemo:
     def interactive_mode(self):
         """Run interactive question-answer mode"""
         print("\n" + "=" * 80)
-        print("🤖 RAG BOT - Interactive Mode")
+        print("RAG BOT - Interactive Mode")
         print("=" * 80)
         print("Type 'exit' or 'quit' to end conversation")
         print("Type 'stats' to see bot statistics")
@@ -157,11 +164,11 @@ class RAGBotDemo:
 
                 if question.lower() in ["exit", "quit"]:
                     logger.info("User exited interactive mode")
-                    print("\n👋 Goodbye!")
+                    print("\nGoodbye!")
                     break
 
                 if question.lower() == "stats":
-                    print(f"\n📊 Statistics:")
+                    print(f"\nStatistics:")
                     print(f"   Questions asked: {question_count}")
                     continue
 
@@ -173,7 +180,7 @@ class RAGBotDemo:
 
             except KeyboardInterrupt:
                 logger.info("Interactive mode interrupted by user")
-                print("\n\n👋 Goodbye!")
+                print("\n\nGoodbye!")
                 break
             except Exception as e:
                 logger.error(f"Error in interactive mode: {e}", exc_info=True)
@@ -241,7 +248,7 @@ def main():
 
     except KeyboardInterrupt:
         logger.info("Application interrupted by user")
-        print("\n\n👋 Goodbye!")
+        print("\n\nGoodbye!")
         sys.exit(0)
     except Exception as e:
         logger.error(f"Fatal error: {e}", exc_info=True)

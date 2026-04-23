@@ -13,6 +13,12 @@ if __name__ == "__main__":
     app_path = src_path / "app.py"
     
     # Run streamlit directly
-    subprocess.run([
-        sys.executable, "-m", "streamlit", "run", str(app_path)
-    ])
+    import subprocess
+    import sys
+
+    try:
+        subprocess.run([
+            sys.executable, "-m", "streamlit", "run", "src/app.py"
+        ])
+    except KeyboardInterrupt:
+        print("\nStreamlit app stopped gracefully.")

@@ -1,134 +1,178 @@
 """
 Vector store management module for RAG Bot
 """
+import warnings
+warnings.filterwarnings("ignore")
 import logging
 import numpy as np
 from pathlib import Path
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 from config import config
 
 logger = logging.getLogger(__name__)
 
-
+# def get_embeddings():
+#     """
+#     Get embeddings using HuggingFace sentence-transformers (384 dims)
+#     Falls back to TF-IDF if sentence-transformers unavailable
+    
+#     Returns:
+#         Embeddings instance
+#     """
+#     try:
+#         try:
+#             from langchain_huggingface import HuggingFaceEmbeddings
+#         except:
+#             raise ImportError("Skip HF embeddings")
+        
+#         logger.info("Using HuggingFace sentence-transformers embeddings (384 dimensions)")
+#         embeddings = HuggingFaceEmbeddings(
+#             model_name="BAAI/bge-base-en-v1.5",  # 384 dimensional embeddings
+#             model_kwargs={"device": "cpu"}
+#         )
+#         return embeddings
+        
+#     except Exception as e:
+#         logger.warning(f"HuggingFace embeddings failed: {str(e)}")
+#         logger.info("Falling back to TF-IDF embeddings")
+        
+#         from sklearn.feature_extraction.text import TfidfVectorizer
+#         from langchain_core.embeddings import Embeddings
+#         import numpy as np
+        
+#         class TFIDFEmbeddings(Embeddings):
+#             """Consistent TF-IDF embeddings with fixed dimensionality"""
+            
+#             def __init__(self):
+#                 # Use fixed vocabulary to ensure consistent dimensions
+#                 self.vectorizer = TfidfVectorizer(
+#                     max_features=384,  # Fixed at 384 to match default
+#                     min_df=1,
+#                     stop_words='english'
+#                 )
+#                 self.fitted = False
+#                 self.fitted_texts = []
+            
+#             def _pad_vector(self, vector):
+#                 """Pad or trim vector to exactly 384 dimensions"""
+#                 if len(vector) < 384:
+#                     # Pad with zeros to reach 384 dimensions
+#                     return vector + [0.0] * (384 - len(vector))
+#                 elif len(vector) > 384:
+#                     # Trim to 384 dimensions
+#                     return vector[:384]
+#                 else:
+#                     return vector
+            
+#             def embed_documents(self, texts):
+#                 """Embed documents - fits on first call"""
+#                 if not self.fitted:
+#                     # Fit on all texts at once for consistency
+#                     self.fitted_texts = texts
+#                     try:
+#                         vectors = self.vectorizer.fit_transform(texts).toarray()
+#                         # Pad each vector to 384 dimensions
+#                         vectors = np.array([self._pad_vector(v.tolist()) for v in vectors])
+#                     except Exception as fit_err:
+#                         logger.error(f"Failed to fit TF-IDF: {fit_err}")
+#                         # If fit fails, return dummy vectors as fallback
+#                         vectors = np.zeros((len(texts), 384))
+#                     self.fitted = True
+#                     return vectors.tolist()
+#                 else:
+#                     # Use existing fitted vectorizer
+#                     try:
+#                         vectors = self.vectorizer.transform(texts).toarray()
+#                         # Pad each vector to 384 dimensions
+#                         vectors = np.array([self._pad_vector(v.tolist()) for v in vectors])
+#                     except Exception as transform_err:
+#                         logger.warning(f"Failed to transform texts: {transform_err}")
+#                         vectors = np.zeros((len(texts), 384))
+#                     return vectors.tolist()
+            
+#             def embed_query(self, text):
+#                 """Embed query"""
+#                 if not self.fitted:
+#                     logger.warning("Embedding query before TFIDFEmbeddings was fitted with documents")
+#                     # Fit on the query itself as a fallback
+#                     _ = self.embed_documents([text])
+                
+#                 try:
+#                     vector = self.vectorizer.transform([text]).toarray()[0]
+#                     vector = self._pad_vector(vector.tolist())
+#                 except Exception as e:
+#                     logger.warning(f"Failed to embed query: {e}")
+#                     vector = np.zeros(384).tolist()
+                
+#                 return vector
+        
+#         logger.info("Using TF-IDF embeddings (384 dimensions)")
+#         return TFIDFEmbeddings()
 def get_embeddings():
     """
-    Get embeddings based on configured provider.
-    Uses offline models by default (no API key needed).
+    Get embeddings using configured provider (HuggingFace or Ollama).
     
-    Tries in order:
-    1. langchain-huggingface (if installed)
-    2. sentence-transformers (if installed)  
-    3. Simple TF-IDF fallback (always works, no dependencies)
+    STRICT MODE: If embeddings fail, HARD FAIL immediately.
+    There is NO fallback to TF-IDF (which degrades quality silently).
     
     Returns:
-        Embeddings instance for the configured provider
+        Embeddings instance
+        
+    Raises:
+        RuntimeError: If embeddings cannot be initialized
     """
+    from config import config
+
     provider = config.LLM_PROVIDER.lower()
-    
-    # Try 1: HuggingFace through langchain (most optimized)
+
     try:
-        from langchain_huggingface import HuggingFaceEmbeddings
-        logger.info("✓ Using LangChain HuggingFace embeddings")
-        return HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2",
-            model_kwargs={"device": "cpu"},
-            encode_kwargs={"normalize_embeddings": True}
-        )
-    except (ImportError, Exception) as e:
-        logger.debug(f"LangChain HuggingFace not available: {type(e).__name__}")
-    
-    # Try 2: Direct sentence-transformers
-    try:
-        from sentence_transformers import SentenceTransformer
-        from langchain_core.embeddings import Embeddings
-        
-        logger.info("✓ Using sentence-transformers embeddings")
-        
-        class SentenceTransformerEmbeddings(Embeddings):
-            """Offline embeddings using sentence-transformers - completely free"""
-            
-            def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
-                self.model = SentenceTransformer(model_name)
-            
-            def embed_documents(self, texts):
-                """Embed search docs"""
-                return self.model.encode(texts, convert_to_numpy=True).tolist()
-            
-            def embed_query(self, text):
-                """Embed query text"""
-                return self.model.encode(text, convert_to_numpy=True).tolist()
-        
-        return SentenceTransformerEmbeddings()
-    except (ImportError, Exception) as e:
-        logger.debug(f"sentence-transformers not available: {type(e).__name__}")
-    
-    # Try 3: Simpler approach - use sklearn's TfidfVectorizer wrapped for LangChain
-    try:
-        from sklearn.feature_extraction.text import TfidfVectorizer
-        from langchain_core.embeddings import Embeddings
-        
-        logger.warning("  Using TF-IDF fallback embeddings (simpler, works offline)")
-        
-        class TfidfEmbeddings(Embeddings):
-            """Simple TF-IDF embeddings - pure Python, no ML dependencies"""
-            
-            def __init__(self, max_features=300):
-                self.vectorizer = TfidfVectorizer(max_features=max_features)
-                self.fitted = False
-                self.vocabulary = {}
-            
-            def embed_documents(self, texts):
-                """Embed documents with TF-IDF"""
-                if not self.fitted:
-                    # First time: fit vectorizer
-                    vectors = self.vectorizer.fit_transform(texts).toarray()
-                    self.fitted = True
-                    self.vocabulary = self.vectorizer.vocabulary_
-                    return vectors.tolist()
-                else:
-                    # Subsequent calls: use fitted vectorizer
-                    vectors = self.vectorizer.transform(texts).toarray()
-                    return vectors.tolist()
-            
-            def embed_query(self, text):
-                """Embed single query"""
-                if not self.fitted:
-                    # Need at least one doc to fit
-                    self.vectorizer.fit([text])
-                    self.fitted = True
-                    self.vocabulary = self.vectorizer.vocabulary_
-                
-                vector = self.vectorizer.transform([text]).toarray()[0]
-                return vector.tolist()
-        
-        logger.info("✓ Using TF-IDF embeddings (fallback)")
-        return TfidfEmbeddings()
-    except (ImportError, Exception) as e:
-        logger.debug(f"TF-IDF not available: {e}")
-    
-    # Last resort: Check if OpenAI key is available
-    if config.OPENAI_API_KEY:
-        try:
-            from langchain_openai import OpenAIEmbeddings
-            logger.warning("  Using OpenAI embeddings (requires API key - will cost money)")
-            return OpenAIEmbeddings(
-                model="text-embedding-3-small",
-                api_key=config.OPENAI_API_KEY
+        if provider == "ollama":
+            from langchain_community.embeddings import OllamaEmbeddings
+            logger.info(f"Using Ollama embeddings with model: {config.EMBEDDING_MODEL}")
+            embeddings = OllamaEmbeddings(
+                model=config.EMBEDDING_MODEL,
+                base_url=config.OLLAMA_BASE_URL
             )
-        except Exception as e:
-            logger.error(f"OpenAI embeddings failed: {e}")
-    
-    # If absolutely nothing works, raise error
-    error_msg = (
-        "No embeddings model available!\n"
-        "Please install one of:\n"
-        "  pip install langchain-huggingface sentence-transformers\n"
-        "or:\n"
-        "  pip install scikit-learn\n"
-        "For OpenAI (paid): add OPENAI_API_KEY to config/.env"
-    )
-    logger.error(error_msg)
-    raise RuntimeError(error_msg)
+            # Validate embeddings work by testing
+            try:
+                test_embedding = embeddings.embed_query("test")
+                if not test_embedding or len(test_embedding) == 0:
+                    raise ValueError("Ollama embeddings returned empty result")
+            except Exception as e:
+                raise RuntimeError(f"Ollama embeddings validation failed: {e}")
+            
+            logger.info(" Ollama embeddings initialized and validated")
+            return embeddings
+
+        else:
+            # Default to HuggingFace
+            from langchain_huggingface import HuggingFaceEmbeddings
+            logger.info("Using HuggingFace sentence-transformers embeddings")
+            embeddings = HuggingFaceEmbeddings(
+                model_name="BAAI/bge-base-en-v1.5"
+            )
+            # Validate embeddings work by testing
+            try:
+                test_embedding = embeddings.embed_query("test")
+                if not test_embedding or len(test_embedding) == 0:
+                    raise ValueError("HuggingFace embeddings returned empty result")
+            except Exception as e:
+                raise RuntimeError(f"HuggingFace embeddings validation failed: {e}")
+            
+            logger.info(" HuggingFace embeddings initialized and validated")
+            return embeddings
+
+    except Exception as e:
+        # HARD FAIL - No fallback to TF-IDF
+        error_msg = (
+            f" CRITICAL: Embeddings initialization failed\n"
+            f"Provider: {provider}\n"
+            f"Error: {str(e)}\n"
+            f"Action: NO TF-IDF FALLBACK\n"
+            f"Please fix the embeddings configuration and try again."
+        )
+        logger.critical(error_msg)
+        raise RuntimeError(error_msg) from e
 
 
 def build_vector_store(chunks):
@@ -155,12 +199,18 @@ def build_vector_store(chunks):
         embeddings = get_embeddings()
 
         logger.debug(f"Creating Chroma database at {config.CHROMA_DB_DIR}")
-        vectordb = Chroma.from_documents(
-            documents=chunks,
-            embedding=embeddings,
+        vectordb = Chroma(
             persist_directory=str(config.CHROMA_DB_DIR),
+            embedding_function=embeddings,
             collection_name="rag_documents"
         )
+
+        # ADD THIS BLOCK (CRITICAL FIX)
+        logger.info("Adding documents to vector store...")
+        vectordb.add_documents(chunks)
+
+
+        logger.info(f"{len(chunks)} documents successfully stored in vector DB")
 
         logger.info("Vector database created successfully")
         logger.debug(f"Persisting database to {config.CHROMA_DB_DIR}")
@@ -172,9 +222,12 @@ def build_vector_store(chunks):
         raise
 
 
-def load_vector_store():
+def load_vector_store(reset_on_mismatch=True):
     """
     Load existing vector store from disk
+    
+    Args:
+        reset_on_mismatch: If True, reset DB on dimension mismatch instead of crashing
     
     Returns:
         Chroma vector store instance
@@ -201,24 +254,36 @@ def load_vector_store():
             embedding_function=embeddings,
             collection_name="rag_documents"
         )
-
-        # Test if vector store has documents
-        try:
-            count = vectordb._collection.count()
-            logger.info(f"Vector store loaded successfully with {count} documents")
-        except Exception as e:
-            logger.warning(f"Could not verify document count: {e}")
-
+        
+        logger.info("Vector store loaded successfully")
         return vectordb
 
     except Exception as e:
-        logger.error(f"Error loading vector store: {str(e)}", exc_info=True)
-        raise
+        error_str = str(e)
+        
+        # Check if it's a dimension mismatch error
+        if "expecting embedding with dimension" in error_str.lower() and reset_on_mismatch:
+            logger.warning(f"Dimension mismatch detected: {error_str}")
+            logger.warning("Resetting vector store...")
+            
+            import shutil
+            try:
+                # Remove the corrupted vector store
+                shutil.rmtree(config.CHROMA_DB_DIR)
+                logger.info("Removed corrupted vector store")
+                logger.info("Vector store will be rebuilt on next document load")
+                raise FileNotFoundError(
+                    f"Vector store had dimension mismatch and was reset. "
+                    f"Please load documents again to rebuild it."
+                )
+            except Exception as cleanup_err:
+                logger.error(f"Failed to cleanup corrupted vector store: {str(cleanup_err)}")
+                raise
+        else:
+            logger.error(f"Error loading vector store: {error_str}", exc_info=True)
+            raise
 
 
-def delete_vector_store():
-    """Delete existing vector store"""
-    import shutil
 
     if Path(config.CHROMA_DB_DIR).exists():
         logger.warning(f"Deleting vector store at {config.CHROMA_DB_DIR}")

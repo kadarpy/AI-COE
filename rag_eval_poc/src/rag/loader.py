@@ -1,21 +1,21 @@
 """
-Document loading module for RAG Bot
+Document loading module for RAG Bot - supports PDF and TXT files
 """
 import logging
-from langchain_community.document_loaders import PyPDFLoader
+from pathlib import Path
+from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from config import config
 from validators import InputValidator, DocumentValidator, ValidationError
 
 logger = logging.getLogger(__name__)
 
-
 def load_documents(file_path: str):
     """
-    Load and process documents from PDF file
+    Load and process documents from PDF or TXT file
     
     Args:
-        file_path: Path to PDF file
+        file_path: Path to PDF or TXT file
         
     Returns:
         List of document chunks
@@ -33,27 +33,41 @@ def load_documents(file_path: str):
         raise ValidationError(f"Invalid file path: {error_msg}")
 
     try:
-        # Load PDF
-        logger.debug(f"Loading PDF from {file_path}")
-        loader = PyPDFLoader(file_path)
+        # Determine file type and load accordingly
+        file_extension = Path(file_path).suffix.lower()
+        
+        if file_extension == ".pdf":
+            logger.debug(f"Loading PDF from {file_path}")
+            loader = PyPDFLoader(file_path)
+        elif file_extension == ".txt":
+            logger.debug(f"Loading TXT from {file_path}")
+            loader = TextLoader(file_path, encoding="utf-8")
+        else:
+            raise ValidationError(f"Unsupported file type: {file_extension}. Use .pdf or .txt")
+        
         docs = loader.load()
 
         if not docs:
-            logger.error("No documents loaded from PDF")
-            raise ValidationError("PDF file appears to be empty or invalid")
+            logger.error("No documents loaded from file")
+            raise ValidationError("File appears to be empty or invalid")
 
-        logger.info(f"Successfully loaded {len(docs)} pages from PDF")
+        logger.info(f"Successfully loaded {len(docs)} documents from {file_extension} file")
 
         # Split into chunks
-        logger.debug(f"Splitting documents with chunk_size={config.PDF_CHUNK_SIZE}, "
-                    f"overlap={config.PDF_CHUNK_OVERLAP}")
+        logger.debug(f"Splitting documents with chunk_size={config.DOC_CHUNK_SIZE}, "
+                    f"overlap={config.DOC_CHUNK_OVERLAP}")
         splitter = RecursiveCharacterTextSplitter(
-            chunk_size=config.PDF_CHUNK_SIZE,
-            chunk_overlap=config.PDF_CHUNK_OVERLAP,
+            chunk_size=config.DOC_CHUNK_SIZE,
+            chunk_overlap=config.DOC_CHUNK_OVERLAP,
             separators=["\n\n", "\n", " ", ""]
         )
 
         chunks = splitter.split_documents(docs)
+
+        # Attach basic metadata (page-based fallback)
+        for i, chunk in enumerate(chunks):
+            chunk.metadata["chunk_id"] = i
+            chunk.metadata["source"] = f"page_{chunk.metadata.get('page', i)}"
 
         if not chunks:
             logger.error("No chunks created from documents")

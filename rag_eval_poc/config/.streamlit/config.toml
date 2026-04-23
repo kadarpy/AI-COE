@@ -1,23 +1,118 @@
+# ======================================================
+# ENTERPRISE STREAMLIT CONFIGURATION
+# Optimized for AI / RAG Applications
+# ======================================================
+
+
+# ------------------------------------------------------
+# THEME (Enterprise Design System)
+# ------------------------------------------------------
+
 [theme]
-primaryColor = "#0066cc"
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#f0f4f8"
-textColor = "#0f172a"
+
+# Corporate primary color (AI/tech blue)
+primaryColor = "#2563EB"
+
+# Clean white interface
+backgroundColor = "#F8FAFC"
+
+# Panels / cards background
+secondaryBackgroundColor = "#FFFFFF"
+
+# Main text color
+textColor = "#0F172A"
+
+# Modern UI font
 font = "sans serif"
 
+
+# ------------------------------------------------------
+# CLIENT SETTINGS (UI / UX)
+# ------------------------------------------------------
+
 [client]
+
+# Hide internal stack traces in production
 showErrorDetails = false
+
+# Minimal toolbar for professional demos
 toolbarMode = "minimal"
 
+# Faster UI rendering
+caching = true
+
+# Prevent unnecessary reruns
+displayEnabled = true
+
+
+# ------------------------------------------------------
+# LOGGER (Production Logging)
+# ------------------------------------------------------
+
 [logger]
+
 level = "info"
 
+# Log format suitable for monitoring systems
+messageFormat = "%(asctime)s %(levelname)s %(message)s"
+
+
+# ------------------------------------------------------
+# SERVER SETTINGS (Performance + Security)
+# ------------------------------------------------------
+
 [server]
+
+# Required for production deployments
 headless = true
-runOnSave = true
+
+# Disable automatic rerun when saving files
+runOnSave = false
+
+# Default Streamlit port
 port = 8501
+
+# Security protection
 enableXsrfProtection = true
-maxUploadSize = 200
+enableCORS = false
+
+# Upload size for large documents (PDF / datasets)
+maxUploadSize = 500
+
+# Faster static asset serving
+enableStaticServing = true
+
+# Websocket compression improves performance
+enableWebsocketCompression = true
+
+# Allow large message sizes (RAG responses)
+maxMessageSize = 200
+
+
+# ------------------------------------------------------
+# BROWSER SETTINGS
+# ------------------------------------------------------
 
 [browser]
+
+# Disable telemetry
 gatherUsageStats = false
+
+# Open browser automatically when running locally
+serverAddress = "localhost"
+
+# Faster page rendering
+serverPort = 8501
+
+
+# ------------------------------------------------------
+# GLOBAL SETTINGS
+# ------------------------------------------------------
+
+[global]
+
+# Development mode disabled
+developmentMode = false
+
+# Prevent script warnings in production
+suppressDeprecationWarnings = true
