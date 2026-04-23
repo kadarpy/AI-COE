@@ -612,6 +612,31 @@ def display_pass_fail_decision(decision: Dict[str, Any]):
         for reason in reasoning:
             st.caption(reason)
 
+def flatten_result(result):
+    """Flatten nested result structure for DataFrame display."""
+    flat = {
+        "test_id": result.get("test_id"),
+        "question": result.get("question"),
+        "expected_answer": result.get("expected_answer"),
+        "actual_answer": result.get("actual_answer"),
+        "category": result.get("category"),
+        "passed": result.get("overall_status") == "PASS",
+    }
+    
+    metrics = result.get("metrics", {})
+    for k, v in metrics.items():
+        if isinstance(v, dict):
+            flat[k] = v.get("score", 0)
+        else:
+            flat[k] = v
+    
+    retrieval = result.get("retrieval_metrics", {})
+    flat["recall_at_k"] = retrieval.get("recall_at_k", 0)
+    flat["precision_at_k"] = retrieval.get("precision_at_k", 0)
+    flat["hit_rate_at_k"] = retrieval.get("hit_rate_at_k", 0)
+    
+    return flat
+
 def display_system_readiness(readiness: str):
     """Display system readiness assessment."""
     readiness_colors = {
@@ -1084,18 +1109,16 @@ def display_batch_evaluation():
                 test_cases_to_run,
                 progress_callback=progress_callback
             )
-        
-        # Store results
-        st.session_state.evaluation_results = batch_results
-        save_results(batch_results)
 
-        if st.button("Clear Saved Results"):
-            LATEST_FILE.unlink(missing_ok=True)
-            st.session_state.evaluation_results = []
-            st.success("Results cleared")
-        
+        # Flatten results before storing
+        flat_results = [flatten_result(r) for r in batch_results]
+
+        # Store flattened results
+        st.session_state.evaluation_results = flat_results
+        save_results(flat_results)
+
         progress_bar.progress(1.0)
-        status_text.text(" Evaluation complete!")
+        status_text.text("✓ Evaluation complete!")
         
         # Display summary
         st.write("---")
@@ -1104,36 +1127,47 @@ def display_batch_evaluation():
         results = st.session_state.evaluation_results
 
         if not results:
-            return {}
+            st.info("No results to display")
+            return
 
-        import statistics
-
-        metric_names = ["Hallucination", "Faithfulness", "AnswerRelevancy", "ContextualRecall"]
-
-        metric_statistics = {}
-
-        for metric in metric_names:
-            scores = [
-                r["metrics"].get(metric, {}).get("score")
-                for r in results
-                if r.get("metrics") and r["metrics"].get(metric, {}).get("score") is not None
-            ]
-
-            if scores:
-                metric_statistics[metric] = {
-                    "mean": statistics.mean(scores),
-                    "min": min(scores),
-                    "max": max(scores)
-                }
-
-        summary = {
-            "total_tests": len(results),
-            "metric_statistics": metric_statistics
-        }
+        # Results are already flattened, no need to call flatten_results()
+        metric_names = ["faithfulness", "answer_relevancy", "contextual_recall", "hallucination"]
         
-        col1 = st.columns(1)[0]
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("Total Tests", summary.get("total_tests", 0))
+            total = len(results)
+            st.metric("Total Tests", total)
+        with col2:
+            passed = sum(1 for r in results if r.get("passed") == True)
+            st.metric("Passed", passed)
+        with col3:
+            failed = sum(1 for r in results if r.get("passed") == False)
+            st.metric("Failed", failed)
+        with col4:
+            pass_rate = round(passed / total * 100, 1) if total > 0 else 0
+            st.metric("Pass Rate", f"{pass_rate}%")
+
+        st.write("---")
+        st.subheader("Average Metric Scores")
+        
+        metric_scores = {}
+        for metric in metric_names:
+            values = [r.get(metric, 0) for r in results if r.get(metric) is not None]
+            if values:
+                metric_scores[metric] = sum(values) / len(values)
+        
+        if metric_scores:
+            fig = px.bar(
+                x=list(metric_scores.keys()),
+                y=list(metric_scores.values()),
+                title="Average Metric Scores",
+                labels={"x": "Metric", "y": "Score"}
+            )
+            st.plotly_chart(
+                fig,
+                use_container_width=True,
+                key="avg_metric_chart"
+            )
 
 def serialize_chat(history):
     serialized = []
@@ -1171,43 +1205,21 @@ def display_evaluation_results():
     results = st.session_state.evaluation_results
 
     if not results:
-        return {}
+        st.info("No evaluation results found")
+        return
 
-    import statistics
-
-    metric_names = ["Hallucination", "Faithfulness", "AnswerRelevancy", "ContextualRecall"]
-
-    metric_statistics = {}
-
-    for metric in metric_names:
-        scores = [
-            r["metrics"].get(metric, {}).get("score")
-            for r in results
-            if r.get("metrics") and r["metrics"].get(metric, {}).get("score") is not None
-        ]
-
-        if scores:
-            metric_statistics[metric] = {
-                "mean": statistics.mean(scores),
-                "min": min(scores),
-                "max": max(scores)
-            }
-
-    summary = {
-        "total_tests": len(results),
-        "metric_statistics": metric_statistics
-    }
+    # Results are already flattened from flatten_result()
+    metric_names = ["faithfulness", "answer_relevancy", "contextual_recall", "hallucination"]
 
     # ==============================
-    # 0. SYSTEM READINESS ASSESSMENT (NEW)
+    # 0. SYSTEM READINESS ASSESSMENT
     # ==============================
     
     st.markdown("System Readiness & Decision Status")
     
     # Calculate pass/fail statistics
-    pass_fail_pass = sum(1 for r in results if r.get("overall_status") == "PASS")
-    pass_fail_fail = sum(1 for r in results if r.get("overall_status") == "FAIL")
-    pass_fail_warning = sum(1 for r in results if r.get("overall_status") == "WARNING")
+    pass_fail_pass = sum(1 for r in results if r.get("passed") == True)
+    pass_fail_fail = sum(1 for r in results if r.get("passed") == False)
     total = len(results)
     
     # Determine system readiness
@@ -1229,46 +1241,51 @@ def display_evaluation_results():
     with col1:
         st.metric("PASS", pass_fail_pass)
     with col2:
-        st.metric("WARNING", pass_fail_warning)
-    with col3:
         st.metric("FAIL", pass_fail_fail)
+    with col3:
+        st.metric("Total", total)
     with col4:
         st.metric("Pass Rate", f"{pass_rate*100:.1f}%")
     
     st.divider()
 
     # ==============================
-    # 1. EXECUTIVE SUMMARY / METRIC PERFORMANCE
+    # 1. METRIC PERFORMANCE
     # ==============================
 
-    st.markdown("### Metric Performance")
-
-    for metric_name, metric_stats in summary.get("metric_statistics", {}).items():
-        score = metric_stats.get("mean", 0)
-
-        display_metric_card(
-            metric_name,
-            score
-        )
-
-    st.divider()
-
-    # ==============================
-    # 3. INSIGHTS DASHBOARD (NEW)
-    # ==============================
+    st.markdown("### Average Metric Scores")
     
-    display_insights_dashboard(summary, st.session_state.evaluation_results)
+    metric_scores = {}
+    for metric in metric_names:
+        values = [r.get(metric, 0) for r in results if r.get(metric) is not None]
+        if values:
+            metric_scores[metric] = sum(values) / len(values)
+    
+    if metric_scores:
+        cols = st.columns(len(metric_scores))
+        for col, (metric_name, score) in zip(cols, metric_scores.items()):
+            with col:
+                st.metric(metric_name.title(), f"{score:.3f}")
     
     st.divider()
 
     # ==============================
-    # 4. DETAILS (COLLAPSIBLE)
+    # 2. DETAILS (COLLAPSIBLE)
     # ==============================
 
     with st.expander("View Detailed Results"):
 
         # Category breakdown
-        if summary.get("by_category"):
+        category_stats = {}
+        for result in results:
+            cat = result.get("category", "Unknown")
+            if cat not in category_stats:
+                category_stats[cat] = {"count": 0, "passed": 0}
+            category_stats[cat]["count"] += 1
+            if result.get("passed"):
+                category_stats[cat]["passed"] += 1
+        
+        if category_stats:
             df_category = pd.DataFrame([
                 {
                     "Category": cat.title(),
@@ -1278,10 +1295,10 @@ def display_evaluation_results():
                         stats["passed"] / stats["count"] * 100, 1
                     )
                 }
-                for cat, stats in summary["by_category"].items()
+                for cat, stats in category_stats.items()
             ])
 
-            st.dataframe(df_category, width='stretch')
+            st.dataframe(df_category, use_container_width=True)
 
         st.write("---")
 
@@ -1289,24 +1306,20 @@ def display_evaluation_results():
         results_data = []
 
         for result in st.session_state.evaluation_results:
+            if not isinstance(result, dict):
+                continue
 
-            status = result.get("overall_status", result.get("result", "UNKNOWN"))
+            status = "OK" if not result.get("error") else "ERROR"
 
             results_data.append({
                 "ID": result.get("test_id"),
-                "Question": (
-                    result.get("question", "N/A")[:60] + "..."
-                    if result.get("question") and len(result.get("question")) > 60
-                    else result.get("question", "N/A")
-                ),
-                "Category": result.get("category", "N/A").upper(),
-                "Status": status,
-                "Score": f"{result.get('final_score', 0):.2f}"
+                "Question": result.get("question"),
+                "Status": status
             })
 
         if results_data:
             df_results = pd.DataFrame(results_data)
-            st.dataframe(df_results, width='stretch', use_container_width=True)
+            st.dataframe(df_results, use_container_width=True)
         
         # Show detailed results with failure analysis
         st.write("---")
@@ -1358,125 +1371,102 @@ def display_evaluation_results():
                     
                     # Show failure analysis
                     display_failure_analysis(result)
+def flatten_results(results):
+        flat = []
+
+        for r1 in results:
+            if isinstance(r1, list):
+                for r2 in r1:
+                    if isinstance(r2, list):
+                        for r3 in r2:
+                            if isinstance(r3, dict):
+                                flat.append(r3)
+                    elif isinstance(r2, dict):
+                        flat.append(r2)
+            elif isinstance(r1, dict):
+                flat.append(r1)
+
+        return flat
 
 def display_clean_dashboard():
     st.subheader("Evaluation Dashboard")
 
     if not st.session_state.evaluation_results:
-        st.info("Run batch evaluation to see results")
+        st.info("No evaluation results. Run batch evaluation first.")
         return
 
     results = st.session_state.evaluation_results
-
-    if not results:
-        st.info("Run batch evaluation to see results")
+    
+    if not isinstance(results, list) or len(results) == 0:
+        st.warning("No evaluation results found")
         return
 
-    # rebuild summary manually
-    import statistics
+    # Convert to DataFrame
+    df = pd.DataFrame(results)
+    
+    if df.empty:
+        st.warning("No evaluation results found")
+        return
 
-    metric_names = ["Hallucination", "Faithfulness", "AnswerRelevancy", "ContextualRecall"]
+    # Display summary stats
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Tests", len(df))
+    with col2:
+        passed = (df["passed"] == True).sum() if "passed" in df.columns else 0
+        st.metric("Passed", passed)
+    with col3:
+        failed = (df["passed"] == False).sum() if "passed" in df.columns else 0
+        st.metric("Failed", failed)
+    with col4:
+        pass_rate = round(passed / len(df) * 100, 1) if len(df) > 0 else 0
+        st.metric("Pass Rate", f"{pass_rate}%")
 
-    metric_statistics = {}
+    st.write("---")
 
-    for metric in metric_names:
-        scores = [
-            r["metrics"].get(metric, {}).get("score")
-            for r in results
-            if r.get("metrics") and r["metrics"].get(metric, {}).get("score") is not None
-        ]
+    # Score overview chart
+    metrics_cols = ["faithfulness", "answer_relevancy", "contextual_recall", "hallucination"]
+    existing_cols = [c for c in metrics_cols if c in df.columns]
 
-        if scores:
-            metric_statistics[metric] = {
-                "mean": statistics.mean(scores),
-                "min": min(scores),
-                "max": max(scores)
-            }
-
-    summary = {
-        "total_tests": len(results),
-        "metric_statistics": metric_statistics
-    }
-
-    # ======================
-    # 1. EXECUTIVE KPI ROW
-    # ======================
-    # st.markdown("### Key Metrics")
-
-    # for metric_name, metric_stats in summary["metric_statistics"].items():
-    #     score = metric_stats.get("mean", 0)
-    #     display_metric_card(metric_name, score)
-
-    st.divider()
-
-    # ======================
-    # 2. MAIN CONTENT
-    # ======================
-    col_left, col_right = st.columns([2, 1])
-
-    # LEFT → METRICS
-    with col_left:
-        st.markdown("### Key Metrics")
-
-        for metric_name, metric_stats in summary["metric_statistics"].items():
-            score = metric_stats.get("mean", 0)
-
-            display_metric_card(metric_name, score)
-
-    # RIGHT → VISUAL
-    with col_right:
-        st.markdown("### Score Overview")
-
-        metric_names = list(summary["metric_statistics"].keys())
-        scores = [summary["metric_statistics"][m]["mean"] for m in metric_names]
-
-        fig = go.Figure()
-        fig.add_trace(go.Bar(
-            x=metric_names,
-            y=scores,
-            marker=dict(
-                color=scores,
-                colorscale="RdYlGn"
-            )
-        ))
-
-        fig.update_layout(
-            height=300,
-            margin=dict(l=10, r=10, t=20, b=20),
-            yaxis=dict(range=[0,1])
+    if existing_cols:
+        st.subheader("Average Metric Scores")
+        avg_scores = df[existing_cols].mean()
+        
+        fig = px.bar(
+            x=avg_scores.index,
+            y=avg_scores.values,
+            title="Average Metric Scores",
+            labels={"x": "Metric", "y": "Score"}
+        )
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            key="avg_metric_chart"
         )
 
-        st.plotly_chart(fig, width='stretch')
+    # Retrieval metrics
+    retrieval_cols = ["recall_at_k", "precision_at_k", "hit_rate_at_k"]
+    retrieval_existing = [c for c in retrieval_cols if c in df.columns]
+    
+    if retrieval_existing:
+        st.subheader("Retrieval Metrics")
+        retrieval_scores = df[retrieval_existing].mean()
+        
+        fig_ret = px.bar(
+            x=retrieval_scores.index,
+            y=retrieval_scores.values,
+            title="Average Retrieval Scores",
+            labels={"x": "Metric", "y": "Score"}
+        )
+        st.plotly_chart(fig_ret, use_container_width=True)
 
-    st.divider()
+    # Results table
+    st.subheader("Detailed Results")
+    st.dataframe(df, use_container_width=True)
 
-    # ======================
-    # 3. DRILLDOWN
-    # ======================
-    with st.expander("Detailed Results"):
-
-        # Table
-        results_data = []
-        for result in st.session_state.evaluation_results:
-
-            status = "OK" if not result.get("error") else "ERROR"
-
-            results_data.append({
-                "ID": result.get("test_id"),
-                "Question": (
-                    result.get("question", "N/A")
-                    if result.get("question") and len(result.get("question")) > 80
-                    else result.get("question", "N/A")
-                ),
-                "Category": result.get("category", "N/A"),
-                "Status": status
-            })
-
-        st.dataframe(pd.DataFrame(results_data), width='stretch')
-
-        for result in st.session_state.evaluation_results:
-            if result.get("error"):
-                st.error(f"Test {result.get('test_id')} failed: {result.get('error')}")
+    # Debug panel
+    with st.expander("DEBUG RESULTS"):
+        st.json(st.session_state.evaluation_results)
 
 def display_metrics_dashboard():
     """Display comprehensive metrics dashboard"""
@@ -1492,44 +1482,26 @@ def display_metrics_dashboard():
     results = st.session_state.evaluation_results
 
     if not results:
-        return {}
+        st.warning("No evaluation results found")
+        return
 
-    import statistics
+    # Results are already flattened from flatten_result()
+    metric_names = ["faithfulness", "answer_relevancy", "contextual_recall", "hallucination"]
 
-    metric_names = ["Hallucination", "Faithfulness", "AnswerRelevancy", "ContextualRecall"]
-
-    metric_statistics = {}
-
+    metric_scores = {}
     for metric in metric_names:
-        scores = [
-            r["metrics"].get(metric, {}).get("score")
-            for r in results
-            if r.get("metrics") and r["metrics"].get(metric, {}).get("score") is not None
-        ]
-
-        if scores:
-            metric_statistics[metric] = {
-                "mean": statistics.mean(scores),
-                "min": min(scores),
-                "max": max(scores)
-            }
-
-    summary = {
-        "total_tests": len(results),
-        "metric_statistics": metric_statistics
-    }
+        values = [r.get(metric, 0) for r in results if r.get(metric) is not None]
+        if values:
+            metric_scores[metric] = sum(values) / len(values)
     
     # Create metric score visualization
-    if summary.get("metric_statistics"):
-        metric_names = list(summary["metric_statistics"].keys())
-        avg_scores = [summary["metric_statistics"][m]["mean"] for m in metric_names]
-        
+    if metric_scores:
         fig_metrics = go.Figure()
         fig_metrics.add_trace(go.Bar(
-            x=metric_names,
-            y=avg_scores,
+            x=list(metric_scores.keys()),
+            y=list(metric_scores.values()),
             marker=dict(
-                color=avg_scores,
+                color=list(metric_scores.values()),
                 colorscale="RdYlGn",
                 showscale=True,
                 colorbar=dict(title="Score")
@@ -1542,7 +1514,7 @@ def display_metrics_dashboard():
             height=400,
             showlegend=False
         )
-        st.plotly_chart(fig_metrics, width='stretch')
+        st.plotly_chart(fig_metrics, use_container_width=True)
 
     col_left, col_right = st.columns([2, 1])
 
@@ -1553,44 +1525,43 @@ def display_metrics_dashboard():
         # KPIs
         col1, col2, col3 = st.columns(3)
 
-        pass_rate = 0  # or remove completely
+        total = len(results)
+        passed = sum(1 for r in results if r.get("passed") == True)
+        pass_rate = (passed / total * 100) if total > 0 else 0
 
         with col1:
-            st.metric("Evaluation Coverage", f"{len(st.session_state.evaluation_results)} tests")
+            st.metric("Total Tests", total)
 
         with col2:
-            st.metric("Tests", summary["total_tests"])
+            st.metric("Passed", passed)
 
         with col3:
-            status = "Active"
-            st.metric("System", status)
+            st.metric("Pass Rate", f"{pass_rate:.1f}%")
 
         st.divider()
 
         st.markdown("### Key Metrics")
 
-        for metric_name, metric_stats in summary["metric_statistics"].items():
-
-            score = metric_stats.get("mean", 0)
-
-
-            display_metric_card(
-                metric_name,
-                score
-            )
+        for metric in metric_names:
+            if metric in metric_scores:
+                score = metric_scores[metric]
+                display_metric_card(
+                    metric.replace('_', ' ').title(),
+                    score
+                )
         
     with col_right:
 
         st.markdown("### Score Distribution")
 
-        metric_names = list(summary["metric_statistics"].keys())
-        scores = [summary["metric_statistics"][m]["mean"] for m in metric_names]
+        metric_labels = [m.replace('_', ' ').title() for m in metric_names]
+        scores = [metric_scores.get(m, 0) for m in metric_names]
 
         fig = go.Figure()
 
         fig.add_trace(go.Bar(
             x=scores,
-            y=metric_names,
+            y=metric_labels,
             orientation='h',
             marker=dict(
                 color=scores,

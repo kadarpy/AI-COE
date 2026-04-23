@@ -56,10 +56,6 @@ from cache_manager import get_cache_manager, get_cached_rag_response, cache_rag_
 from reranker import get_reranker
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 
 from deepeval.models.base_model import DeepEvalBaseLLM
 from groq import Groq
@@ -1267,7 +1263,7 @@ class UIEvaluator:
             "timestamp": datetime.now().isoformat()
         }
 
-        self.results.append(output)
+        self.results.extend([output])
 
         logger.info(
             f"[RESULT] Test {test_id}: {interpretation['result']} "
@@ -1448,70 +1444,56 @@ class UIEvaluator:
 
         return decision
 
+    # In evaluation.py, ensure evaluate_batch returns clean results:
+
     def evaluate_batch(
         self,
         test_cases: List[Dict[str, Any]],
         progress_callback=None,
-        seed: int = 42,
-        num_runs: int = None
-    ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+        seed: int = 42
+    ) -> List[Dict[str, Any]]:
         """
-        Evaluate multiple test cases with multi-run support.
-
-        Supports running evaluation multiple times to measure stability.
-        Aggregates results across runs.
+        Evaluate multiple test cases with single-pass execution.
+        
+        Each test case is evaluated EXACTLY ONCE.
+        NO multi-run loops, NO result averaging.
 
         Args:
-            test_cases: List of test cases
+            test_cases: List of test cases to evaluate
             progress_callback: Callback for progress updates
             seed: Random seed for reproducibility
-            num_runs: Number of runs (default from config)
             
         Returns:
-            Tuple of (all_results, aggregated_summary)
+            List of evaluation results, one per test case
         """
-        if num_runs is None:
-            num_runs = config.EVAL_NUM_RUNS
-
         set_evaluation_seed(seed)
         
-        # Multi-run evaluation
-        all_runs = []
+        self.results = []
         
-        logger.info(f"[BATCH] Starting multi-run evaluation: {num_runs} runs x {len(test_cases)} tests")
+        logger.info(f"[BATCH] Starting evaluation: {len(test_cases)} tests (single-pass, no multi-run)")
 
-        for run_num in range(1, num_runs + 1):
-            logger.info(f"\n{'='*60}")
-            logger.info(f"RUN {run_num}/{num_runs}")
-            logger.info(f"{'='*60}")
-            
-            self.results = []
-            
-            for i, test_case in enumerate(test_cases, 1):
-                try:
-                    self.evaluate_single_test(test_case, run_number=run_num)
-                    if progress_callback:
-                        progress_callback(i + (run_num - 1) * len(test_cases), num_runs * len(test_cases))
-                except Exception as e:
-                    logger.error(f"[BATCH] Run {run_num} Test {i} crashed: {e}")
-                    self.results.append({
-                        "test_id": test_case.get("id", i),
-                        "error": str(e),
-                        "run_number": run_num
-                    })
-            
-            all_runs.append(self.results.copy())
-
-        # Aggregate results across runs
-        self.results = all_runs[0]  # Default to first run for main results
+        for i, test_case in enumerate(test_cases, 1):
+            try:
+                self.evaluate_single_test(test_case, run_number=1)
+                if progress_callback:
+                    progress_callback(i, len(test_cases))
+            except Exception as e:
+                logger.error(f"[BATCH] Test {i} crashed: {e}")
+                self.results.append({
+                    "test_id": test_case.get("id", i),
+                    "question": test_case.get("question", ""),
+                    "expected_answer": test_case.get("expected_answer", ""),
+                    "actual_answer": "",
+                    "category": test_case.get("category", ""),
+                    "error": str(e),
+                    "overall_status": "FAIL",
+                    "passed": False,
+                    "timestamp": datetime.now().isoformat()
+                })
         
-        aggregated_summary = self._aggregate_multi_run_results(all_runs, test_cases)
+        logger.info(f"[BATCH] Evaluation complete: {len(self.results)} results")
         
-        logger.info(f"\n{'='*60}")
-        logger.info("MULTI-RUN EVALUATION COMPLETE")
-        logger.info(f"{'='*60}")
-        
-        return all_runs, aggregated_summary
+        return self.results
 
     def _aggregate_multi_run_results(
         self,

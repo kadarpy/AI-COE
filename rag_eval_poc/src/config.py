@@ -68,7 +68,7 @@ class Config:
 
     # ===================== EVALUATION CONFIGURATION =====================
     EVAL_TEST_CASES_PATH = TEST_DIR
-    EVAL_NUM_RUNS = int(os.getenv("EVAL_NUM_RUNS", "3"))
+    EVAL_NUM_RUNS = int(os.getenv("EVAL_NUM_RUNS", "1"))
     EVAL_SEED = int(os.getenv("EVAL_SEED", "42"))
 
     # ===================== RERANKER CONFIGURATION =====================

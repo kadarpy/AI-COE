@@ -13,10 +13,7 @@ from rag.vector_store import build_vector_store, load_vector_store
 from rag.rag_chain import build_rag_chain
 
 # Configure logging
-logging.basicConfig(
-    level=getattr(logging, config.LOG_LEVEL),
-    format=config.LOG_FORMAT
-)
+
 logger = logging.getLogger(__name__)
 
 
@@ -119,7 +116,7 @@ class RAGBotDemo:
 
         except Exception as e:
             logger.error(f"Error processing question: {e}", exc_info=True)
-            print(f" Error processing question: {e}")
+            logger.error(f"Error processing question: {e}", exc_info=True)
             return None
 
     def display_response(self, response: dict):
