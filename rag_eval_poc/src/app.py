@@ -857,7 +857,7 @@ def display_single_test_evaluation():
     
     # Select test case
     test_ids = [
-            f"{tc['category'].upper()} • {tc['difficulty'].upper()}  |  Q{tc['id']}: {tc['question']}"
+            f"{tc.get('category', 'unknown').upper()} • {tc.get('difficulty', 'N/A').upper()}  |  Q{tc.get('id', '?')}: {tc.get('question', 'No question')}"
             for tc in st.session_state.evaluation_test_cases
         ]
     selected_idx = st.selectbox("Select Test Case", range(len(test_ids)), 

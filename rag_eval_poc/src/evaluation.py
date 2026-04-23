@@ -205,13 +205,17 @@ def compute_semantic_completeness(expected_answer: str, actual_answer: str) -> f
         # Clamp to [0, 1]
         completeness = max(0.0, min(1.0, similarity))
 
+        # Hard penalty for near-zero semantic overlap
+        if completeness < 0.3:
+            completeness = 0.0
+
         logger.debug(f"[COMPLETENESS] Semantic similarity: {completeness:.3f}")
         return completeness
 
     except Exception as e:
         logger.warning(f"[COMPLETENESS] Semantic comparison failed: {e}")
-        # Fallback: simple length ratio (not ideal but safe)
-        return min(len(actual) / max(len(expected), 1), 1.0)
+        # Fallback: if semantic computation fails, do not inflate completeness
+        return 0.0
 
 
 # =========================
@@ -405,19 +409,23 @@ def compute_concept_coverage(
     actual_answer: str
 ) -> Tuple[float, Dict[str, Any]]:
     """
-    Check if required concepts from ground truth are mentioned in the answer.
+    Compute concept coverage using SOFT SCORING (not binary).
     
-    DETERMINISTIC concept checking.
+    Returns mean semantic similarity of concepts to answer.
+    This makes the evaluator generalizable across GenAI tasks.
+    
+    SOFT SCORING: Each concept contributes its similarity score, not all-or-nothing.
+    Example: 0.85 + 0.45 + 0.92 → coverage = (0.85+0.45+0.92)/3 = 0.74
     
     Args:
-        ground_truth_context: Ground truth context chunks
+        ground_truth_context: Ground truth concept chunks
         actual_answer: Model's answer
         
     Returns:
-        Tuple of (coverage_score, debug_info)
+        Tuple of (coverage_score [0,1], debug_info)
     """
     if not ground_truth_context or not actual_answer:
-        return 1.0, {"note": "Insufficient input"}
+        return 0.0, {"note": "Insufficient input"}
     
     try:
         from sentence_transformers import util, SentenceTransformer
@@ -431,30 +439,38 @@ def compute_concept_coverage(
         # Compute similarity of each concept to the answer
         similarities = util.pytorch_cos_sim(concept_embeddings, answer_embedding).squeeze()
         
-        # Threshold for concept mention
-        threshold = 0.5
-        covered = (similarities >= threshold).sum().item()
+        # SOFT SCORING: Mean similarity (not binary threshold)
+        # Each concept contributes its similarity to the overall coverage
+        coverage = float(torch.mean(similarities))
         total = len(ground_truth_context)
         
-        coverage = covered / total if total > 0 else 0.0
+        # For reference: also compute binary coverage at threshold 0.7
+        threshold = 0.7
+        covered_binary = (similarities >= threshold).sum().item()
         
         debug = {
             "required_concepts": total,
-            "mentioned_concepts": int(covered),
-            "concept_threshold": threshold,
+            "covered_binary_at_0.7": int(covered_binary),
+            "soft_coverage": coverage,  # Primary metric (mean of similarities)
+            "concept_threshold_binary": threshold,
             "avg_similarity": float(torch.mean(similarities)),
+            "min_similarity": float(torch.min(similarities)),
+            "max_similarity": float(torch.max(similarities)),
             "similarity_scores": [float(s) for s in similarities]
         }
         
-        uncovered = [gt for gt, sim in zip(ground_truth_context, similarities) if sim < threshold]
-        if uncovered:
-            debug["uncovered_concepts"] = uncovered
-            logger.warning(f"[CONCEPT_COVERAGE] Missing concepts: {uncovered}")
+        uncovered_soft = [
+            (gt, float(sim)) for gt, sim in zip(ground_truth_context, similarities) 
+            if sim < threshold
+        ]
+        if uncovered_soft:
+            debug["uncovered_concepts_below_0.7"] = uncovered_soft
+            logger.debug(f"[CONCEPT_COVERAGE] Soft scoring: {coverage:.3f} (binary @0.7: {covered_binary}/{total})")
         
         return float(coverage), debug
         
     except Exception as e:
-        logger.warning(f"[CONCEPT_COVERAGE] Failed: {e}")
+        logger.warning(f"[CONCEPT_COVERAGE] Soft computation failed: {e}")
         return 0.0, {"error": str(e)}
 
 
@@ -820,49 +836,74 @@ def interpret_results_no_bias(
 
     # ==================== ANSWERABLE/PARTIAL HANDLING ====================
     else:
-        interpretation["reasoning"].append(f"[{category.upper()}] SEPARATED SCORING")
+        interpretation["reasoning"].append(f"[{category.upper()}] UNIVERSAL SOFT-SCORING (GenAI-Ready)")
 
-        #  ANSWER SCORE: Only answer quality metrics (NO retrieval penalty)
+        #  ANSWER SCORE: Weighted mean of core metrics (NO retrieval penalty)
         # ==========================================
+        # Universal Formula (works across QA, summarization, creative tasks):
+        # answer_score = weighted_mean({
+        #     faithfulness: 0.3,
+        #     relevancy: 0.3,
+        #     hallucination: 0.2,
+        #     completeness: 0.2
+        # })
         
         answer_scores = {}
         answer_weights = {}
-
+        
+        # Core metric: Hallucination (inverted: lower is better)
         if metrics.get("hallucination", {}).get("applied") and hal_score is not None:
             answer_scores["hallucination"] = 1 - hal_score  # Invert (lower hallucination is better)
-            answer_weights["hallucination"] = 0.30
-            interpretation["reasoning"].append(f"[ANSWER] Hallucination={hal_score:.2f} (inverted={1-hal_score:.2f})")
-
+            answer_weights["hallucination"] = 0.20
+            interpretation["reasoning"].append(f"[CORE] Hallucination={hal_score:.3f} (inverted score={1-hal_score:.3f})")
+        
+        # Core metric: Faithfulness (soft: mean of similarities, universal threshold ≥ 0.80)
         if metrics.get("faithfulness", {}).get("applied") and faith_score is not None:
             answer_scores["faithfulness"] = faith_score
-            answer_weights["faithfulness"] = 0.20
-            interpretation["reasoning"].append(f"[ANSWER] Faithfulness={faith_score:.2f}")
-
+            answer_weights["faithfulness"] = 0.30
+            interpretation["reasoning"].append(f"[CORE] Faithfulness={faith_score:.3f} (threshold: ≥0.80)")
+        
+        # Core metric: Answer Relevancy (soft: mean of similarities, universal threshold ≥ 0.80)
         if metrics.get("answer_relevancy", {}).get("applied") and relevancy_score is not None:
             answer_scores["answer_relevancy"] = relevancy_score
-            answer_weights["answer_relevancy"] = 0.20
-            interpretation["reasoning"].append(f"[ANSWER] Answer Relevancy={relevancy_score:.2f}")
-
+            answer_weights["answer_relevancy"] = 0.30
+            interpretation["reasoning"].append(f"[CORE] Answer Relevancy={relevancy_score:.3f} (threshold: ≥0.80)")
+        
+        # Core metric: Semantic Completeness (soft: mean similarity, universal threshold ≥ 0.65)
+        if completeness_score is not None:
+            answer_scores["semantic_completeness"] = completeness_score
+            answer_weights["semantic_completeness"] = 0.20
+            interpretation["reasoning"].append(f"[CORE] Semantic Completeness={completeness_score:.3f} (threshold: ≥0.65)")
+        
+        # Optional (debug): Concept Coverage (soft: mean similarity) - NOT in core scoring
+        # Can be used for detailed analysis but not aggregated into final answer_score
         if concept_coverage is not None:
-            answer_scores["concept_coverage"] = concept_coverage
-            answer_weights["concept_coverage"] = 0.15
-            interpretation["reasoning"].append(f"[ANSWER] Concept Coverage={concept_coverage:.2f}")
-
-        # Apply completeness to answer score
+            interpretation["reasoning"].append(f"[DEBUG] Concept Coverage (soft)={concept_coverage:.3f} (not in core scoring)")
+        
+        # Compute weighted mean
         if answer_scores:
             total_weight = sum(answer_weights.values())
             weighted_sum = sum(
                 answer_scores[metric] * answer_weights[metric]
                 for metric in answer_scores
             )
-            answer_score_raw = weighted_sum / total_weight if total_weight > 0 else 0.0
-            answer_score = answer_score_raw * completeness_score  # Completeness applies to answer only
+            answer_score = weighted_sum / total_weight if total_weight > 0 else 0.0
             interpretation["reasoning"].append(
-                f"[ANSWER] Raw aggregate: {answer_score_raw:.3f}, Completeness: {completeness_score:.3f} → {answer_score:.3f}"
+                f"[AGGREGATION] Weighted mean: {answer_score:.3f} "
+                f"(sum weights: {total_weight})"
             )
         else:
             answer_score = 0.0
-            interpretation["reasoning"].append("[ANSWER] No applicable metrics")
+            interpretation["reasoning"].append("[AGGREGATION] No applicable core metrics")
+        
+        # Hard guards (only for extreme cases)
+        if hal_score is not None and (1 - hal_score) < 0.5:
+            interpretation["reasoning"].append("[GUARD] Strong hallucination (<0.5) detected")
+            answer_score = min(answer_score, 0.5)  # Cap score, don't zero it
+        
+        if relevancy_score == 0:
+            interpretation["reasoning"].append("[GUARD] Zero relevancy detected")
+            answer_score = min(answer_score, 0.3)
 
         interpretation["answer_score"] = round(answer_score, 3)
 
@@ -873,24 +914,32 @@ def interpret_results_no_bias(
         interpretation["retrieval_score"] = round(retrieval_score, 3)
         
         interpretation["reasoning"].append(
-            f"[RETRIEVAL] Independent score: {retrieval_score:.3f}"
+            f"[RETRIEVAL] Independent score (soft): {retrieval_score:.3f}"
         )
 
         #  DIAGNOSIS: Clearly identify what's working and what's not
         # ==========================================
         
         diagnosis = get_evaluation_diagnosis(answer_score, retrieval_score)
+        
+        # Partial answer diagnosis when the answer is relevant but incomplete
+        if completeness_score is not None and completeness_score < 0.65 and \
+           relevancy_score is not None and relevancy_score > 0.80:
+            diagnosis = "PARTIAL ANSWER (incomplete coverage)"
+        
         interpretation["diagnosis"] = diagnosis
         interpretation["reasoning"].append(f"[DIAGNOSIS] {diagnosis}")
 
-        #  Final score for sorting/reporting (use answer score primarily)
-        # ==========================================
-        
-        interpretation["final_score"] = answer_score
+        # Final score: Weighted combination of independent answer and retrieval
+        # answer_score and retrieval_score are now on comparable scales (both soft)
+        interpretation["final_score"] = round(0.7 * answer_score + 0.3 * retrieval_score, 3)
 
-        # Determine result based on ANSWER score (retrieval issues handled separately)
-        if answer_score >= 0.70:
-            interpretation["result"] = "PASS"
+        # Determine result based on absolute answer quality (soft threshold ≥ 0.75)
+        if answer_score >= 0.75:
+            if retrieval_score >= 0.65:
+                interpretation["result"] = "PASS"
+            else:
+                interpretation["result"] = "WARNING"  # Good answer, weak retrieval
         elif answer_score >= 0.60:
             interpretation["result"] = "WARNING"
         else:
@@ -914,13 +963,17 @@ def get_evaluation_diagnosis(answer_score: float, retrieval_score: float) -> str
     Returns:
         Diagnostic string
     """
-    answer_good = answer_score >= 0.85
-    answer_medium = answer_score >= 0.65
+    answer_good = answer_score >= 0.75
+    answer_medium = answer_score >= 0.50
     retrieval_good = retrieval_score >= 0.80
     retrieval_medium = retrieval_score >= 0.60
     
+    # Soft human-style diagnosis for moderate answers
+    if 0.40 < answer_score < 0.70 and retrieval_score > 0.60:
+        return "⚠️  PARTIAL ANSWER (good but incomplete)"
+
     if answer_good and retrieval_good:
-        return " SYSTEM WORKING WELL (good answer, strong retrieval)"
+        return "SYSTEM WORKING WELL (good answer, strong retrieval)"
     elif answer_good and retrieval_medium:
         return "⚠️  GOOD ANSWER, MEDIOCRE RETRIEVAL (fix: reranking, retrieval logic)"
     elif answer_good and not retrieval_medium:
@@ -930,13 +983,13 @@ def get_evaluation_diagnosis(answer_score: float, retrieval_score: float) -> str
     elif answer_medium and retrieval_medium:
         return "⚠️  MEDIOCRE SYSTEM (both need improvement)"
     elif answer_medium and not retrieval_medium:
-        return " LLM+RETRIEVAL DEGRADED (fix: everything)"
+        return "⚠️  PARTIAL ANSWER (good but incomplete)"
     elif not answer_medium and retrieval_good:
-        return " WEAK ANSWER, STRONG RETRIEVAL (fix: LLM reasoning, hallucination control)"
+        return "WEAK ANSWER, STRONG RETRIEVAL (fix: LLM reasoning, hallucination control)"
     elif not answer_medium and retrieval_medium:
-        return " SYSTEMIC FAILURE - LLM ISSUE (good docs, bad answer generation)"
+        return "SYSTEMIC FAILURE - LLM ISSUE (good docs, bad answer generation)"
     else:
-        return " SYSTEMIC FAILURE - COMPLETE (both answer and retrieval broken)"
+        return "SYSTEMIC FAILURE - COMPLETE (both answer and retrieval broken)"
 
 
 
